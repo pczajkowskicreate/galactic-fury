@@ -11,3 +11,6 @@ desktop.ini
 # Screenshots / backups (don't commit these)
 galactic-fury-screenshots/
 *-backup-*/
+
+# Raw asset packs (not part of the game)
+Legacy Collection/
