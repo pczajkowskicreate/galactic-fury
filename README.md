@@ -4,7 +4,7 @@ A fast-paced arcade space shooter built with **Phaser 3.60** and fully synthesiz
 
 ## Features
 
-- 3 campaign stages · 17 waves · 5 boss fights
+- 3 campaign stages · 25 waves · 5 boss fights
 - Endless mode with escalating difficulty tiers
 - Secret Prism Dimension bonus area
 - Rainbow Combo system
