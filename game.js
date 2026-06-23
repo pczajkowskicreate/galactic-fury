@@ -47,6 +47,304 @@ const PRISM_WAVES = [
     { mimics: 7, prisms: 8, swarms: 6, drones: 0, interval: 300 },
 ];
 
+// ─── BACKGROUND DECORATIONS (PixelLab space objects) ─────────────────────────
+// Stages: planets/nebulas/rifts drift downward; stations/creature drift any direction.
+// Menu:   planets/nebulas/rifts are FIXED (anchor + slow rotate); stations drift freely.
+const BG_DEC_CFG = [
+    { key: 'bgdec-planet0',   drift: true,  scaleMin: 0.35, scaleMax: 0.90, alphaMin: 0.22, alphaMax: 0.50 },
+    { key: 'bgdec-planet1',   drift: true,  scaleMin: 0.35, scaleMax: 0.90, alphaMin: 0.22, alphaMax: 0.50 },
+    { key: 'bgdec-nebula0',   drift: true,  scaleMin: 0.70, scaleMax: 1.90, alphaMin: 0.06, alphaMax: 0.22 },
+    { key: 'bgdec-nebula2',   drift: true,  scaleMin: 0.60, scaleMax: 1.70, alphaMin: 0.08, alphaMax: 0.24 },
+    { key: 'bgdec-station0',  drift: false, scaleMin: 0.22, scaleMax: 0.58, alphaMin: 0.22, alphaMax: 0.48 },
+    { key: 'bgdec-station1',  drift: false, scaleMin: 0.22, scaleMax: 0.58, alphaMin: 0.22, alphaMax: 0.48 },
+    { key: 'bgdec-rift0',     drift: true,  scaleMin: 0.28, scaleMax: 0.78, alphaMin: 0.16, alphaMax: 0.40 },
+    { key: 'bgdec-rift1',     drift: true,  scaleMin: 0.28, scaleMax: 0.78, alphaMin: 0.16, alphaMax: 0.40 },
+    { key: 'bgdec-creature0', drift: false, scaleMin: 0.26, scaleMax: 0.70, alphaMin: 0.13, alphaMax: 0.35 },
+];
+const BG_DEC_TINTS = [0xffffff, 0xaaddff, 0xffaae0, 0xaaffcc, 0xffeeaa, 0xddaaff, 0xff9988, 0x88eeff];
+
+// Menu pool: anchored items (planets, nebulas, rifts) + drifting stations only.
+const BG_MENU_ANCHORED = ['bgdec-nebula0','bgdec-nebula2','bgdec-rift0','bgdec-rift1'];
+const BG_MENU_DRIFTERS = ['bgdec-station0','bgdec-station1','bgdec-creature0'];
+// Void leech clouds recolored for menu atmosphere
+const BG_MENU_CLOUDS = [
+    { key: 'cloud-purple', tint: 0xff4499 },  // purple → hot pink
+    { key: 'cloud-teal',   tint: 0xffaa22 },  // teal → warm gold
+    { key: 'cloud-orange', tint: 0x44bbff },  // orange → ice blue
+];
+
+// Game-stage background passers — spawn randomly during waves, drift downward
+const GAME_BG_GALAXIES  = ['galaxy-blue_0','galaxy-blue_1','galaxy-gold_0','galaxy-gold_1',
+                           'galaxy-pink_0','galaxy-pink_1','galaxy-cyan_0','galaxy-cyan_1',
+                           'galaxy-red_0','galaxy-red_1','galaxy-red_2'];
+const GAME_BG_NEBULAS   = ['bgdec-nebula0','bgdec-nebula2'];
+const GAME_BG_STATIONS  = ['bgdec-station0','bgdec-station1'];
+const GAME_BG_PLANETS   = ['bgdec-planet0','bgdec-planet1'];
+const GAME_BG_CLDTINTS  = { 'cloud-purple': 0xff4499, 'cloud-teal': 0xffaa22, 'cloud-orange': 0x44bbff };
+
+function _bgDecVel(anyDir, spdMin, spdMax) {
+    const spd = Phaser.Math.FloatBetween(spdMin, spdMax);
+    if (anyDir) {
+        const ang = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        return { vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd };
+    }
+    return { vx: Phaser.Math.FloatBetween(-6, 6), vy: spd };
+}
+
+function _bgDecSpawn(scene, key, fixed) {
+    const cfg = BG_DEC_CFG.find(c => c.key === key);
+    const F = Phaser.Math.FloatBetween;
+    const sc = F(cfg.scaleMin, cfg.scaleMax);
+    const ta = F(cfg.alphaMin, cfg.alphaMax);
+    const tint = BG_DEC_TINTS[Phaser.Math.Between(0, BG_DEC_TINTS.length - 1)];
+    // Anchored items get a very slow rotation; drifters get faster spin
+    const rs = fixed ? F(-0.10, 0.10) : F(-0.40, 0.40);
+    let x, y, vx = 0, vy = 0;
+    if (fixed) {
+        x = Phaser.Math.Between(35, W - 35);
+        y = Phaser.Math.Between(35, H - 35);
+    } else {
+        // Start from a random screen edge
+        const edge = Phaser.Math.Between(0, 3);
+        if      (edge === 0) { x = F(-80, -20); y = Phaser.Math.Between(0, H); }
+        else if (edge === 1) { x = F(W+20, W+80); y = Phaser.Math.Between(0, H); }
+        else if (edge === 2) { x = Phaser.Math.Between(0, W); y = F(-80, -20); }
+        else                 { x = Phaser.Math.Between(0, W); y = F(H+20, H+80); }
+        const v = _bgDecVel(true, 10, 32);
+        vx = v.vx; vy = v.vy;
+    }
+    return { cfg, sc, ta, tint, rs, x, y, vx, vy };
+}
+
+
+function createBgDecoPool(scene, count, forMenu) {
+    const pool = [];
+    if (forMenu) {
+        // Non-overlapping zones: 2 columns × 3 rows across the 480×720 canvas
+        const zones = [
+            { x1: 45, x2: 185, y1: 55,  y2: 215 },
+            { x1: 295, x2: 435, y1: 55,  y2: 215 },
+            { x1: 45, x2: 185, y1: 255, y2: 430 },
+            { x1: 295, x2: 435, y1: 255, y2: 430 },
+            { x1: 45, x2: 185, y1: 490, y2: 650 },
+            { x1: 295, x2: 435, y1: 490, y2: 650 },
+        ];
+        // Shuffle zones so assignment varies each visit
+        for (let i = zones.length - 1; i > 0; i--) {
+            const j = Phaser.Math.Between(0, i);
+            [zones[i], zones[j]] = [zones[j], zones[i]];
+        }
+        // Anchored: planets, nebulas, rifts — one per zone, rotate in place
+        for (let i = 0; i < BG_MENU_ANCHORED.length; i++) {
+            const key = BG_MENU_ANCHORED[i];
+            const cfg = BG_DEC_CFG.find(c => c.key === key);
+            const zone = zones[i];
+            const F = Phaser.Math.FloatBetween;
+            // Cap scale so items stay within their zone and don't bleed into neighbours
+            const sc  = F(Math.min(cfg.scaleMin, 0.40), Math.min(cfg.scaleMax, 0.85));
+            const ta  = F(cfg.alphaMin, cfg.alphaMax);
+            const rs  = F(-0.10, 0.10);
+            const tint = BG_DEC_TINTS[Phaser.Math.Between(0, BG_DEC_TINTS.length - 1)];
+            const x = Phaser.Math.Between(zone.x1, zone.x2);
+            const y = Phaser.Math.Between(zone.y1, zone.y2);
+            const img = scene.add.image(x, y, key)
+                .setDepth(2).setAlpha(ta * F(0.55, 1.0))
+                .setScale(sc).setAngle(Phaser.Math.Between(0, 359)).setTint(tint);
+            pool.push({ img, key, vx: 0, vy: 0, rotSpd: rs, targetAlpha: ta, dying: false, fixed: true });
+        }
+        // Planets drift steadily downward — one per x-lane, staggered y, never overlap
+        const PLANET_KEYS = ['bgdec-planet0','bgdec-planet1','bgdec-planet0','bgdec-planet1'];
+        // 4 fixed x lanes spread across the canvas width
+        const PLANET_X = [60, 180, 300, 420];
+        // 4 y start positions spread across full height so stream is continuous immediately
+        const PLANET_Y = [-H * 0.85, -H * 0.30, H * 0.22, H * 0.70];
+        // Shuffle y assignments so types don't always appear at the same heights
+        PLANET_Y.sort(() => Math.random() - 0.5);
+        for (let pi = 0; pi < 4; pi++) {
+            const key = PLANET_KEYS[pi];
+            const F = Phaser.Math.FloatBetween;
+            const sc  = F(0.28, 0.55);   // capped smaller so they fit within their lane
+            const ta  = F(0.22, 0.50);
+            const tint = BG_DEC_TINTS[Phaser.Math.Between(0, BG_DEC_TINTS.length - 1)];
+            const x  = PLANET_X[pi] + Phaser.Math.Between(-12, 12); // slight jitter within lane
+            const y  = PLANET_Y[pi];
+            // bigger planets move faster — scale 0.28→14px/s, scale 0.55→32px/s
+            const vy = 14 + ((sc - 0.28) / (0.55 - 0.28)) * 18;
+            const rs = F(-0.08, 0.08);
+            const img = scene.add.image(x, y, key)
+                .setDepth(2).setAlpha(ta * F(0.4, 1.0))
+                .setScale(sc).setAngle(Phaser.Math.Between(0, 359)).setTint(tint);
+            // forMenu:false so respawn sends back to top, not a random edge
+            pool.push({ img, key, vx: 0, vy, rotSpd: rs, targetAlpha: ta, dying: false, fixed: false, forMenu: false, anyDir: false, laneX: x });
+        }
+        // Drifting: stations and creature — spawn each type twice from different edges
+        for (const key of BG_MENU_DRIFTERS) {
+            for (let pass = 0; pass < 2; pass++) {
+                const d = _bgDecSpawn(scene, key, false);
+                const img = scene.add.image(d.x, d.y, key)
+                    .setDepth(2).setAlpha(0)
+                    .setScale(d.sc).setAngle(Phaser.Math.Between(0, 359)).setTint(d.tint);
+                pool.push({ img, key, vx: d.vx, vy: d.vy, rotSpd: d.rs, targetAlpha: d.ta, dying: false, fixed: false });
+            }
+        }
+        // Recolored void leech clouds — very large, very slow ambient drifters
+        for (const cloud of BG_MENU_CLOUDS) {
+            const F = Phaser.Math.FloatBetween;
+            const sc = F(2.0, 3.2);
+            const ta = F(0.08, 0.18);
+            const spd = F(1.5, 4.5);
+            const ang = F(0, Math.PI * 2);
+            const vx = Math.cos(ang) * spd, vy = Math.sin(ang) * spd;
+            const x = Phaser.Math.Between(0, W), y = Phaser.Math.Between(0, H);
+            const img = scene.add.image(x, y, cloud.key)
+                .setDepth(1).setAlpha(ta * F(0.4, 1.0))
+                .setScale(sc).setTint(cloud.tint);
+            pool.push({ img, key: cloud.key, vx, vy, rotSpd: 0, targetAlpha: ta, dying: false, fixed: false });
+        }
+    } else {
+        // Game stages: all 10 types, spread initially, drift downward or any-dir
+        for (let i = 0; i < count; i++) {
+            const cfg = BG_DEC_CFG[i % BG_DEC_CFG.length];
+            const anyDir = !cfg.drift; // stations & creature: any direction
+            const F = Phaser.Math.FloatBetween;
+            const sc = F(cfg.scaleMin, cfg.scaleMax);
+            const ta = F(cfg.alphaMin, cfg.alphaMax);
+            const tint = BG_DEC_TINTS[Phaser.Math.Between(0, BG_DEC_TINTS.length - 1)];
+            const rs = F(-0.38, 0.38);
+            let x = Phaser.Math.Between(20, W - 20);
+            let y = anyDir ? Phaser.Math.Between(20, H - 20) : F(-H, H);
+            const v = _bgDecVel(anyDir, anyDir ? 10 : 13, anyDir ? 34 : 44);
+            const img = scene.add.image(x, y, cfg.key)
+                .setDepth(2).setAlpha(ta * F(0.3, 1.0))
+                .setScale(sc).setAngle(Phaser.Math.Between(0, 359)).setTint(tint);
+            pool.push({ img, key: cfg.key, vx: v.vx, vy: v.vy, rotSpd: rs, targetAlpha: ta, dying: false, fixed: false, anyDir });
+        }
+    }
+    return pool;
+}
+
+function updateBgDecoPool(pool, dt) {
+    for (const d of pool) {
+        const img = d.img;
+
+        // Anchored (menu fixed items): only rotate, never move or respawn
+        if (d.fixed) {
+            img.rotation += d.rotSpd * dt;
+            continue;
+        }
+
+        img.x += d.vx * dt;
+        img.y += d.vy * dt;
+        img.rotation += d.rotSpd * dt;
+
+        if (d.dying) {
+            img.alpha -= 2.0 * dt;
+            if (img.alpha <= 0) {
+                d.dying = false;
+                // Respawn from random edge
+                const edge = Phaser.Math.Between(0, 3);
+                const F = Phaser.Math.FloatBetween;
+                if      (edge === 0) { img.x = F(-90, -20); img.y = Phaser.Math.Between(0, H); }
+                else if (edge === 1) { img.x = F(W+20, W+90); img.y = Phaser.Math.Between(0, H); }
+                else if (edge === 2) { img.x = Phaser.Math.Between(0, W); img.y = F(-90, -20); }
+                else {
+                    // For downward-drifters, always respawn from top
+                    if (!d.anyDir) {
+                        img.x = d.laneX !== undefined ? d.laneX : Phaser.Math.Between(20, W - 20);
+                        img.y = F(-130, -30);
+                    } else { img.x = Phaser.Math.Between(0, W); img.y = F(H+20, H+90); }
+                }
+                // Pick a new random velocity direction
+                const anyDir = d.anyDir || false;
+                const v = _bgDecVel(anyDir, anyDir ? 10 : 13, anyDir ? 34 : 44);
+                d.vx = v.vx; d.vy = v.vy;
+                img.setAngle(Phaser.Math.Between(0, 359)).setAlpha(0);
+            }
+            continue;
+        }
+
+        if (img.alpha < d.targetAlpha)
+            img.alpha = Math.min(img.alpha + d.targetAlpha * 0.35 * dt, d.targetAlpha);
+
+        const margin = 115;
+        const anyDir = d.anyDir || false;
+        const off = anyDir
+            ? (img.x < -margin || img.x > W + margin || img.y < -margin || img.y > H + margin)
+            : img.y > H + margin;
+        if (off) d.dying = true;
+    }
+}
+
+// ─── GAME-STAGE BACKGROUND PASSERS ───────────────────────────────────────────
+function createGameBgPool(scene) {
+    return { scene, items: [], spawnTimer: 0, nextSpawn: Phaser.Math.FloatBetween(3, 7) };
+}
+
+function updateGameBgPool(pool, dt) {
+    const { scene } = pool;
+    const F = Phaser.Math.FloatBetween;
+    const B = Phaser.Math.Between;
+
+    pool.spawnTimer += dt;
+    if (pool.spawnTimer >= pool.nextSpawn && pool.items.length < 8) {
+        pool.spawnTimer = 0;
+        pool.nextSpawn = F(3.5, 8.5);
+
+        // Weighted type: galaxy 30 | nebula 25 | cloud 22 | station 15 | planet 8
+        const r = Math.random() * 100;
+        let key, sc, ta, vy, rotSpd, depth, tint;
+
+        if (r < 30) {
+            key = GAME_BG_GALAXIES[B(0, GAME_BG_GALAXIES.length - 1)];
+            sc = F(0.25, 0.62);  ta = F(0.18, 0.50);
+            vy = F(14, 30);
+            rotSpd = F(0.5, 2.0) * (Math.random() < 0.5 ? 1 : -1);
+            depth = 2;  tint = null;
+        } else if (r < 55) {
+            key = GAME_BG_NEBULAS[B(0, GAME_BG_NEBULAS.length - 1)];
+            sc = F(1.0, 2.6);   ta = F(0.05, 0.16);
+            vy = F(4, 9);
+            rotSpd = F(0.1, 0.4) * (Math.random() < 0.5 ? 1 : -1);
+            depth = 1;  tint = BG_DEC_TINTS[B(0, BG_DEC_TINTS.length - 1)];
+        } else if (r < 77) {
+            const cKeys = ['cloud-purple','cloud-teal','cloud-orange'];
+            key = cKeys[B(0, 2)];
+            sc = F(1.5, 3.0);   ta = F(0.04, 0.12);
+            vy = F(3, 8);
+            rotSpd = F(0.1, 0.3) * (Math.random() < 0.5 ? 1 : -1);
+            depth = 1;  tint = GAME_BG_CLDTINTS[key];
+        } else if (r < 92) {
+            key = GAME_BG_STATIONS[B(0, GAME_BG_STATIONS.length - 1)];
+            sc = F(0.28, 0.68);  ta = F(0.20, 0.50);
+            vy = F(10, 22);
+            rotSpd = F(3, 9) * (Math.random() < 0.5 ? 1 : -1);
+            depth = 2;  tint = null;
+        } else {
+            // Rare planet — bigger scale = slower drift
+            key = GAME_BG_PLANETS[B(0, GAME_BG_PLANETS.length - 1)];
+            sc = F(0.55, 1.25);  ta = F(0.28, 0.55);
+            vy = 22 - ((sc - 0.55) / 0.70) * 15;  // 22 px/s at sc=0.55, ~7 px/s at sc=1.25
+            rotSpd = F(0.3, 1.5) * (Math.random() < 0.5 ? 1 : -1);
+            depth = 2;  tint = BG_DEC_TINTS[B(0, BG_DEC_TINTS.length - 1)];
+        }
+
+        const img = scene.add.image(B(30, W - 30), -150, key)
+            .setDepth(depth).setScale(sc).setAlpha(ta).setAngle(B(0, 359));
+        if (tint) img.setTint(tint);
+        pool.items.push({ img, vy, rotSpd });
+    }
+
+    for (let i = pool.items.length - 1; i >= 0; i--) {
+        const d = pool.items[i];
+        d.img.y     += d.vy      * dt;
+        d.img.angle += d.rotSpd  * dt;
+        if (d.img.y > H + 300) {
+            d.img.destroy();
+            pool.items.splice(i, 1);
+        }
+    }
+}
+
 // ─── SOUND FX (synthesized via Web Audio API — no files needed) ──────────────
 
 class SoundFX {
@@ -850,6 +1148,16 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('planet-small',BASE + 'Warped/Environments/space_background_pack/Blue Version/layered/prop-planet-small.png');
         this.load.image('stage-back',  BASE + 'Warped/Environments/top-down-space-environment/PNG/layers/stage-back.png');
 
+        // PixelLab background decoration objects
+        ['planet_0','planet_1','nebula_0','nebula_1','nebula_2',
+         'station_0','station_1','rift_0','rift_1','creature_0'].forEach(n =>
+            this.load.image(`bgdec-${n.replace('_','')}`, `assets/bg/${n}.png`));
+
+        // PixelLab galaxies (menu background only)
+        ['blue_0','blue_1','gold_0','gold_1','pink_0','pink_1',
+         'cyan_0','cyan_1','red_0','red_1','red_2'].forEach(n =>
+            this.load.image(`galaxy-${n}`, `assets/bg/galaxy_${n}.png`));
+
         // Player ship (PixelLab)
         this.load.image('ship',            BASE + 'Warped/Characters/Warped Vehicles Files/vehicle 3/Sprites/vehicle-3.png');
         [1,2,3].forEach(i => this.load.image(`thrust${i}`, BASE + `Warped/Characters/Warped Vehicles Files/vehicle 3/Sprites/frames-thrust/thrust-bottom/thrust-bottom${i}.png`));
@@ -1085,21 +1393,87 @@ class MenuScene extends Phaser.Scene {
 
     create() {
         this.add.rectangle(W / 2, H / 2, W, H, 0x00000f);
-        for (let i = 0; i < 90; i++) {
+
+        // Static/near-static deep-background stars — tiny, dim, barely drift
+        for (let i = 0; i < 55; i++) {
             this.add.circle(
                 Phaser.Math.Between(0, W), Phaser.Math.Between(0, H),
-                Phaser.Math.Between(1, 2), 0xffffff, Phaser.Math.FloatBetween(0.15, 0.9)
-            );
+                1, 0xffffff, Phaser.Math.FloatBetween(0.06, 0.22)
+            ).setDepth(0);
         }
 
-        // Drifting ship silhouette
-        const sil = this.add.graphics().setAlpha(0.07).setDepth(0);
-        sil.fillStyle(0x3366ff, 1);
-        sil.fillTriangle(0, 20, -14, -6, 14, -6);
-        sil.fillTriangle(-14, -6, -20, 14, 0, 2);
-        sil.fillTriangle(14, -6, 20, 14, 0, 2);
-        sil.x = 30; sil.y = H - 30;
-        this.tweens.add({ targets: sil, x: W - 30, y: 40, duration: 13000, ease: 'Linear', yoyo: true, repeat: -1 });
+        // Three-layer parallax star field — colorful moving dots
+        const STAR_COLORS = [
+            0xffffff, 0xffffff, 0xffffff,  // white (most common)
+            0xaaddff, 0x88ccff,             // blue-white
+            0xffeeaa, 0xffdd88,             // warm yellow
+            0x44eeff, 0x00ddff,             // cyan
+            0xff9977, 0xff7755,             // red-orange
+            0xcc99ff, 0xaa77ff,             // purple
+        ];
+        const rndColor = () => STAR_COLORS[Phaser.Math.Between(0, STAR_COLORS.length - 1)];
+        this._menuStars = [];
+        // Layer 1: distant slow dots
+        for (let i = 0; i < 40; i++) {
+            const obj = this.add.circle(
+                Phaser.Math.Between(0, W), Phaser.Math.Between(0, H),
+                1, rndColor(), Phaser.Math.FloatBetween(0.15, 0.50)
+            ).setDepth(0);
+            this._menuStars.push({ obj, spd: Phaser.Math.FloatBetween(18, 38) });
+        }
+        // Layer 2: mid-distance dots
+        for (let i = 0; i < 25; i++) {
+            const obj = this.add.circle(
+                Phaser.Math.Between(0, W), Phaser.Math.Between(0, H),
+                Phaser.Math.Between(1, 2), rndColor(), Phaser.Math.FloatBetween(0.35, 0.70)
+            ).setDepth(0);
+            this._menuStars.push({ obj, spd: Phaser.Math.FloatBetween(55, 85) });
+        }
+        // Layer 3: close fast dots (circles, not rectangles — no line artifact)
+        for (let i = 0; i < 14; i++) {
+            const obj = this.add.circle(
+                Phaser.Math.Between(0, W), Phaser.Math.Between(0, H),
+                2, rndColor(), Phaser.Math.FloatBetween(0.60, 0.95)
+            ).setDepth(0);
+            this._menuStars.push({ obj, spd: Phaser.Math.FloatBetween(110, 175) });
+        }
+
+        this._bgDecos = createBgDecoPool(this, 8, true);
+
+        // A few small fixed galaxies — pick 4 at random from the full set, no rotation
+        const ALL_GALAXIES = ['blue_0','blue_1','gold_0','gold_1','pink_0','pink_1',
+                              'cyan_0','cyan_1','red_0','red_1','red_2'];
+        const GALAXY_ZONES = [
+            { x1: 10, x2: 120, y1: 10,  y2: 130 },
+            { x1: 360, x2: 470, y1: 10,  y2: 130 },
+            { x1: 10, x2: 120, y1: 590, y2: 710 },
+            { x1: 360, x2: 470, y1: 590, y2: 710 },
+        ];
+        // Shuffle galaxy keys and zone list independently
+        const gKeys = [...ALL_GALAXIES].sort(() => Math.random() - 0.5).slice(0, 4);
+        const gZones = [...GALAXY_ZONES].sort(() => Math.random() - 0.5);
+        for (let i = 0; i < 4; i++) {
+            const z = gZones[i];
+            const gImg = this.add.image(
+                Phaser.Math.Between(z.x1, z.x2),
+                Phaser.Math.Between(z.y1, z.y2),
+                `galaxy-${gKeys[i]}`
+            ).setDepth(1)
+             .setScale(Phaser.Math.FloatBetween(0.28, 0.52))
+             .setAlpha(Phaser.Math.FloatBetween(0.35, 0.65))
+             .setAngle(Phaser.Math.Between(0, 359));
+            // Very slow rotation — full turn in 40-90 seconds, random direction
+            const dur = Phaser.Math.Between(40000, 90000);
+            const clockwise = Math.random() < 0.5;
+            this.tweens.add({
+                targets: gImg,
+                angle: gImg.angle + (clockwise ? 360 : -360),
+                duration: dur,
+                ease: 'Linear',
+                repeat: -1,
+            });
+        }
+
 
         const spaceTxt = this.add.text(W / 2, H / 2 - 155, 'GALACTIC', {
             fontFamily: 'monospace', fontSize: '52px', fill: '#4488ff',
@@ -1767,6 +2141,20 @@ class MenuScene extends Phaser.Scene {
         this.input.keyboard.once('keydown-H',   _close);
         this.input.keyboard.once('keydown-ESC', _close);
     }
+
+    update(time, delta) {
+        const dt = delta / 1000;
+        if (this._menuStars) {
+            for (const s of this._menuStars) {
+                s.obj.y += s.spd * dt;
+                if (s.obj.y > H + 12) {
+                    s.obj.y = -12;
+                    s.obj.x = Phaser.Math.Between(0, W);
+                }
+            }
+        }
+        if (this._bgDecos) updateBgDecoPool(this._bgDecos, dt);
+    }
 }
 
 // ─── CREDITS ─────────────────────────────────────────────────────────────────
@@ -2058,6 +2446,8 @@ class GameScene extends Phaser.Scene {
         this.planetBig   = this.add.image(Phaser.Math.Between(70, W-70), -180, 'planet-big').setAlpha(0.85).setScale(0.75).setDepth(2);
         this.planetSmall = this.add.image(Phaser.Math.Between(70, W-70), -380, 'planet-small').setAlpha(0.7).setScale(0.55).setDepth(2);
 
+        this._gameBgPool = createGameBgPool(this);
+
         // Player – PixelLab interceptor ship sprite
         this.thrustColor = parseInt(localStorage.getItem('space-shooter-thrust-color') || '') || 0x00ffee;
         this.shipColor   = parseInt(localStorage.getItem('space-shooter-ship-color')   || '') || 0x00aaff;
@@ -2321,6 +2711,8 @@ class GameScene extends Phaser.Scene {
             this.planetSmall.y += 30 * dt;
             if (this.planetSmall.y > H + 180) { this.planetSmall.y = -180; this.planetSmall.x = Phaser.Math.Between(50, W-50); }
         }
+
+        updateGameBgPool(this._gameBgPool, dt);
     }
 
     _movePlayer(dt) {
@@ -4364,8 +4756,14 @@ class GameScene extends Phaser.Scene {
                 if (Phaser.Math.Distance.Between(b.x, b.y, s.x, s.y) < 12) {
                     this._spawnHitFX(s.x, s.y, false);
                     b.destroy();
-                    this._registerKill(25);
-                    s.destroy();
+                    const shp = s.getData('hp') - 1;
+                    if (shp <= 0) {
+                        this._registerKill(25);
+                        s.destroy();
+                    } else {
+                        s.setData('hp', shp);
+                        s.setAlpha(0.4 + shp * 0.2);
+                    }
                     shardHit = true;
                     break;
                 }
@@ -4466,7 +4864,7 @@ class GameScene extends Phaser.Scene {
                         this.waveAlive = Math.max(0, this.waveAlive - 1);
                         const crystalChance = isSwarm ? 0.08 : isPrism ? 0.12 : isMimic ? 0 : isDrone ? 0.10 : isCarrier ? 0.10 : isScarab ? 0.10 : isWorm ? 0.10 : isHornet ? 0.08 : 0.18;
                         if (Math.random() < crystalChance) this._spawnHealthCrystal(e.x, e.y);
-                        const wChance = isDrone ? 0.20 : isBiped ? 0.15 : isCarrier ? 0.20 : (isPrism || isMimic) ? 0 : isScarab ? 0.15 : isWorm ? 0.10 : isHornet ? 0.05 : 0.05;
+                        const wChance = isDrone ? 0.15 : isBiped ? 0.10 : isCarrier ? 0.15 : (isPrism || isMimic) ? 0 : isScarab ? 0.10 : isWorm ? 0.10 : isHornet ? 0.05 : 0.05;
                         if (this.bossDefeated && Math.random() < wChance) this._spawnWeaponDrop(e.x, e.y);
                         if (this.endlessMode && Math.random() < 0.10) this._spawnEndlessDrop(e.x, e.y);
                         e.destroy();
@@ -5994,7 +6392,8 @@ class GameScene extends Phaser.Scene {
             s.setData({
                 vx: Math.sin(rad) * 320,
                 vy: Math.cos(rad) * 320,
-                born: this.time.now
+                born: this.time.now,
+                hp: 3
             });
             this.prismShards.add(s);
         });

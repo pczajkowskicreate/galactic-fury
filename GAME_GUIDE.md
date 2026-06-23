@@ -20,8 +20,8 @@
 
 | Mode | Key | Description |
 |------|-----|-------------|
-| Campaign | SPACE | 3 stages, 17 waves total, ends with The Leviathan |
-| Endless | E | Repeating tier loop; waves 21–25 use PRISM_WAVES content (Prism Overlord boss) |
+| Campaign | SPACE | 5 stages, 25 waves total — Stage 4 ends with The Leviathan, Stage 5 is the Prism Dimension |
+| Endless | E | Repeating tier loop after campaign waves, scales with each lap |
 
 ---
 
@@ -73,7 +73,15 @@ Set on the main menu with arrow keys. Applies to all modes.
 | Swarm Alien | `swarm` | 1 | Tiny fast kamikaze spawned in groups of 4; sine-wave drift | `alien-fly` anim (Warped) |
 | Prism Entity | `prism` | 2 | On death fires **5 RGB shards** outward at fixed angles | `prism-enemy-anim` (PixelLab) |
 | Void Leech | `vleech` | 2–3 | Bonus encounter; orbits the player area then strikes; drops ♥ or shield on death | `vleech-m*` PixelLab frames |
-| Mimic | `mimic` | 3 | Diamond-shaped, copies the player's current weapon type and fires it back | Drawn procedurally with `_drawMimicShape` |
+| Mimic | `mimic` | 4 | Diamond-shaped, copies the player's current weapon type and fires it back; on death fires **5 RGB shards** | Drawn procedurally with `_drawMimicShape` |
+
+### Prism Shards
+Spawned by Prism Entity and Mimic on death — 5 shards per kill.
+- **HP**: 3 hits to destroy (each hit dims alpha as feedback)
+- **Score**: +25 pts on final hit
+- **Movement**: outward burst at 320 px/s, despawn after 3 seconds
+- **Pierce chance**: 35% — shard continues through an enemy after damaging it
+- **Kill enemies**: shards deal 1 HP damage to any enemy they pass through
 
 **To add a new enemy type:**
 1. Add a spawn function `_spawnXxx()` following the pattern in `game.js` (~line 2119).
@@ -85,8 +93,8 @@ Set on the main menu with arrow keys. Applies to all modes.
 
 ## Campaign Stages & Waves
 
-Wave data lives in the `WAVES` array at the top of `game.js` (lines 9–30).
-Each entry: `{ eyes, bipeds, drones, shields, swarms, prisms, interval }`.
+Wave data lives in the `WAVES` array at the top of `game.js` (lines 9–34). 20 campaign waves total, followed by 5 Prism Dimension waves.
+Each entry: `{ eyes, bipeds, drones, shields, swarms, prisms, scarabs, worms, hornets, interval }`.
 `interval` = ms between enemy spawns (lower = faster).
 
 ### Stage 1 — Waves 1–5
@@ -123,29 +131,45 @@ Post-boss. Drones, shields, and prism enemies introduced. Weapon drops enabled.
 
 ---
 
-### Stage 3 — Waves 11–17 (Void Run)
+### Stage 3 — Waves 11–15 (Void Run)
 No eyes or bipeds. Void atmosphere. Stage 3 music plays.
 First wave is `STAGE3_WAVE = 11`.
 
-| Wave | Drones | Shields | Swarms | Prisms | Interval |
-|------|--------|---------|--------|--------|----------|
-| 11 | 4 | 2 | 3 | 1 | 520ms |
-| 12 | 5 | 3 | 3 | 1 | 480ms |
-| 13 | 5 | 3 | 4 | 2 | 440ms |
-| 14 | 6 | 4 | 3 | 2 | 400ms |
-| 15 | 7 | 3 | 4 | 2 | 360ms |
-| 16 | 8 | 4 | 5 | 3 | 320ms |
-| 17 | 9 | 5 | 5 | 3 | 280ms |
+| Wave | Drones | Swarms | Shields | Prisms | Scarabs | Worms | Interval |
+|------|--------|--------|---------|--------|---------|-------|----------|
+| 11 | 7 | — | 3 | 2 | 2 | — | 520ms |
+| 12 | — | 4 | 3 | 2 | 2 | 1 | 480ms |
+| 13 | 8 | — | 3 | 3 | — | 2 | 440ms |
+| 14 | — | 5 | 4 | 3 | 1 | 2 | 400ms |
+| 15 | 10 | — | 4 | 3 | — | 3 | 360ms |
 
 **Hazard triggers:**
 - After wave 12 → **Ion Storm** → then wave 13
-- After wave 13 → **Void Cruiser Mid-Boss**
+- After wave 13 → **Void Cruiser Mid-Boss** → then wave 14
 - After wave 14 → **Ion Storm** → then wave 15
-- After wave 15 → **Ion Storm** → then wave 16
+- After wave 15 → `_beginStage4()` → transitions to Stage 4
 
-→ After wave 17 clears: **The Leviathan (Final Boss)**
+---
 
-**To add a new campaign wave:** extend the `WAVES` array, adjust `STAGE3_WAVE` if needed, and add any hazard triggers in `_updateWave()` (~line 2049).
+### Stage 4 — Waves 16–20 (Deep Void)
+Hornets introduced. Drones/swarms alternate. Intense pace.
+First wave is `STAGE4_WAVE = 16`.
+
+| Wave | Drones | Swarms | Shields | Prisms | Hornets | Interval |
+|------|--------|--------|---------|--------|---------|----------|
+| 16 | — | 5 | 3 | 3 | 2 | 320ms |
+| 17 | 12 | — | 3 | 3 | 3 | 280ms |
+| 18 | — | 5 | 4 | 3 | 3 | 260ms |
+| 19 | 13 | — | 4 | 4 | 4 | 240ms |
+| 20 | — | 6 | 4 | 4 | 4 | 220ms |
+
+**Hazard triggers:**
+- After wave 17 → **Gravity Storm** → then wave 18
+- After wave 19 → **Gravity Storm** → then wave 20
+
+→ After wave 20 clears: **The Leviathan (Final Boss)**
+
+**To add a new campaign wave:** extend the `WAVES` array, adjust `STAGE3_WAVE` / `STAGE4_WAVE` if needed, and add any hazard triggers in `_updateWave()` (~line 2049).
 
 ---
 
@@ -242,11 +266,13 @@ Hazards block asteroid spawning and regular black hole spawning while active.
 - **Config**: `_beginMeteorShower()` in `game.js`
 
 ### Ion Storm (Stage 3 hazard)
-- Triggered: between waves 12–13, 14–15, 15–16
+- Triggered: between waves 12–13, 14–15
 - Ion bolts rain from above; special music plays
 - **Config**: `_beginIonStorm()` in `game.js`
 
-### Gravity Storm / Black Hole Shower (Endless Mode, Tier A wave 5)
+### Gravity Storm / Black Hole Shower (Stage 4 + Endless)
+- **Campaign**: triggered between waves 17–18 and 19–20 (Stage 4)
+- **Endless**: also triggers at Tier A wave 5
 - Large black holes spawn over ~14s, much stronger gravity (G = 520 000 vs normal 300 000)
 - Black holes are bigger (scale 1.5 vs 1.2) and slower (35–55 px/s vs 50–80 px/s) — more pull time
 - Player gravity pull multiplied ×2 during shower
@@ -262,7 +288,7 @@ Hazards block asteroid spawning and regular black hole spawning while active.
 
 ## Endless Mode
 
-Triggered from menu with **E**. Plays through all 17 campaign waves first, then enters the endless loop.
+Triggered from menu with **E**. Plays through all 20 campaign waves first (including The Leviathan), then enters the endless loop.
 
 ### Tier Structure
 Each "lap" = 21 waves: **Tier A** (7 waves) → **Tier B** (7 waves) → **Tier C** (7 waves) → repeat.
@@ -328,14 +354,35 @@ Background cycles through 7 dark rainbow colors (`PRISM_BG_COLS`).
 ### Standard (all modes)
 | Item | Source | Effect |
 |------|--------|--------|
-| Health Crystal | Enemy death (rare) | +1 life (max 5) |
+| Health Crystal | Enemy death (chance varies) | +1 life (max 5) |
 | Crystal Cluster | Red asteroid (7% chance) | +3 lives (max 5) |
-| Shield Charge | Shield Carrier death | +1 shield (max 2) |
-| Spread Shot | Enemy drop (Stage 2+) | 3-way fan for timed duration |
-| Twin Bolt | Enemy drop (Stage 2+) | Dual beams |
-| Rapid Fire | Enemy drop (Stage 2+) | 2× fire rate, aimed |
+| Shield Charge | Asteroid death / Void Leech death | +1 shield (max 2) |
+| Spread Shot | Enemy drop (Stage 2+, boss defeated) | 3-way fan for timed duration |
+| Twin Bolt | Enemy drop (Stage 2+, boss defeated) | Dual beams |
+| Rapid Fire | Enemy drop (Stage 2+, boss defeated) | 2× fire rate, aimed |
 
 Weapons time out after a set duration or reset when the player is hit.
+
+### Enemy Drop Rates
+
+| Enemy | ♥ Health drop | 🔫 Weapon drop¹ | 🛡 Shield drop |
+|-------|---------------|-----------------|----------------|
+| Flying Eye | 18% | 5% | — |
+| Biped | 18% | 10% | — |
+| Kamikaze Drone | 10% | 15% | — |
+| Shield Carrier | 10% | 15% | — |
+| Scarab Bomber | 10% | 10% | — |
+| Spectrum Worm | 10% | 10% | — |
+| Demon Hornet | 8% | 5% | — |
+| Swarm Alien | 8% | 5% | — |
+| Prism Entity | 12% | 0% | — |
+| Mimic | 10% | 0% | — |
+| Void Leech | ~17.5% | 0% | ~17.5%² |
+| Asteroid | 0% | 0% | 15%³ |
+
+¹ Weapon drops only spawn after the Stage 1 boss is defeated (`bossDefeated = true`).
+² Void Leech has a 35% drop chance on death; outcome is a 50/50 coin flip between health and shield.
+³ Asteroid shield drop is multiplied by difficulty: Easy ×1.5 / Normal ×1.0 / Hard ×0.5.
 
 ### Crystal Events (random, between waves)
 40% chance per non-hazard transition (35% in Endless). Shoot the crystal to trigger:
@@ -385,10 +432,42 @@ Weapons time out after a set duration or reset when the player is hit.
 - H key also closes the overlay
 
 ### Score
-- Enemies: varies by type (eye = 100, biped = 300, drone = 100, etc.)
-- Bosses: large bonus
-- Combo multiplier applies at time of kill
+| Target | Points |
+|--------|--------|
+| Flying Eye | 100 |
+| Biped | 300 |
+| Kamikaze Drone | 50 |
+| Shield Carrier | 500 |
+| Swarm Alien | 75 |
+| Scarab Bomber | 250 |
+| Spectrum Worm | 350 |
+| Demon Hornet | 100 |
+| Prism Entity | 200 |
+| Mimic | 350 |
+| Prism Shard (last hit) | 25 |
+| Phantom Drone | 100 |
+| Ion Orb | 150 |
+| Asteroid | 50 |
+| Crystal Asteroid | 300 |
+| Void Leech | 150 |
+| Gunship Mid-Boss | 2 000 |
+| Black Hole (Rainbow) | HP × 100 |
+
+- Combo multiplier applies at time of kill (×1 → ×4, reaching ×4 triggers Rainbow Mode)
 - Hard difficulty: ×1.5 score multiplier
+
+### Background Passers (all game stages)
+Atmospheric objects drift downward continuously — simulating the player flying upward through deep space. Spawn randomly every 3.5–8.5 seconds, max 8 on screen at once.
+
+| Type | Weight | Speed | Rotation | Notes |
+|------|--------|-------|----------|-------|
+| Galaxy | 30% | 14–30 px/s | 0.5–2°/s | Small, semi-transparent |
+| Nebula | 25% | 4–9 px/s | very slow | Large, low alpha, tinted |
+| Void Cloud | 22% | 3–8 px/s | barely moves | Huge, near-invisible; pink/gold/blue tint |
+| Derelict Station | 15% | 10–22 px/s | 3–9°/s | Slowly rotates in place as it passes |
+| Planet | 8% | 7–22 px/s | 0.3–1.5°/s | Rare; **bigger = slower drift** (inverse scale/speed) |
+
+Managed by `createGameBgPool()` / `updateGameBgPool()` global functions. Called from `GameScene._scrollBg()`.
 
 ### Black Hole Gravity
 - Normal BH: G = 300 000 — pulls player and deflects bullets
@@ -402,8 +481,9 @@ Weapons time out after a set duration or reset when the player is hit.
 
 | What to change | Where in game.js |
 |----------------|-----------------|
-| Campaign wave counts / speed | `WAVES` array, lines 9–30 |
-| When Stage 3 starts | `STAGE3_WAVE` constant, line 32 |
+| Campaign wave counts / speed | `WAVES` array, lines 9–34 |
+| When Stage 3 starts | `STAGE3_WAVE` constant (= 11) |
+| When Stage 4 starts | `STAGE4_WAVE` constant (= 16) |
 | Boss wave trigger | `BOSS_WAVE` constant, line 7 |
 | Prism Dimension waves | `PRISM_WAVES` array, lines 37–43 |
 | Difficulty multipliers | `create()` function, lines 1398–1402 |
@@ -421,6 +501,11 @@ Weapons time out after a set duration or reset when the player is hit.
 | Meteor shower | `_beginMeteorShower()` |
 | Ion storm | `_beginIonStorm()` |
 | Enemy spawn functions | `_spawnEye/Biped/Drone/Carrier/Swarm/Prism/Mimic()` |
+| Enemy drop rates (health/weapon) | `_collide()` — `crystalChance` and `wChance` lines |
+| Prism shard HP | `_spawnPrismShards()` — `hp: 3` in `setData()` |
+| Prism shard bullet collision | `_collide()` — "Prism shards" block, decrement hp logic |
+| Game-stage background passers | `createGameBgPool()` / `updateGameBgPool()` global functions |
+| Background passer spawn weights | `updateGameBgPool()` — weighted `r < 30 / 55 / 77 / 92` branches |
 | Endless tier wave generation | `_generateEndlessWave()`, line 4527 |
 | Endless tier boss selection | `_showEndlessBoss()`, line 4571 |
 | Crystal event rewards | `_shatterCrystal()`, line 4363 |
