@@ -6,9 +6,9 @@ A fast-paced arcade space shooter built with **Phaser 3.60** and fully synthesiz
 
 - 3 campaign stages · 25 waves · 5 boss fights
 - Endless mode with escalating difficulty tiers
-- Secret Prism Dimension bonus area
+- Secret Void Leech Dimension bonus area
 - Rainbow Combo system
-- 11 enemy types including Void Leech bonus encounter
+- 11 enemy types
 - Fully synthesized sound via Web Audio API
 - Pixel art assets (Warped, Gothicvania, PixelLab AI)
 
