@@ -20,17 +20,17 @@ const WAVES = [
     { eyes: 3, bipeds: 6, drones: 5, shields: 2, prisms: 2, scarabs: 2, interval: 680 },
     { eyes: 4, bipeds: 6, drones: 6, shields: 3, prisms: 2, scarabs: 2, interval: 600 },
     // ── Stage 3 (ion storms) — drones and swarms alternate, never together ──────
-    { eyes: 0, bipeds: 0, drones: 7,  shields: 3, swarms: 0, prisms: 2, scarabs: 2,            interval: 520 },
-    { eyes: 0, bipeds: 0, drones: 0,  shields: 3, swarms: 4, prisms: 2, scarabs: 2, worms: 1,  interval: 480 },
-    { eyes: 0, bipeds: 0, drones: 8,  shields: 3, swarms: 0, prisms: 3,             worms: 2,  interval: 440 },
-    { eyes: 0, bipeds: 0, drones: 0,  shields: 4, swarms: 5, prisms: 3, scarabs: 1, worms: 2,  interval: 400 },
-    { eyes: 0, bipeds: 0, drones: 10, shields: 4, swarms: 0, prisms: 3,             worms: 3,  interval: 360 },
+    { eyes: 3, bipeds: 1, drones: 4,  shields: 4, swarms: 0, prisms: 2, scarabs: 3,            interval: 520 },
+    { eyes: 0, bipeds: 0, drones: 0,  shields: 5, swarms: 2, prisms: 3, scarabs: 3, worms: 3,  interval: 480 },
+    { eyes: 2, bipeds: 2, drones: 4,  shields: 4, swarms: 0, prisms: 3,             worms: 3,  interval: 440 },
+    { eyes: 0, bipeds: 0, drones: 0,  shields: 5, swarms: 2, prisms: 4, scarabs: 2, worms: 3,  interval: 400 },
+    { eyes: 3, bipeds: 1, drones: 4,  shields: 4, swarms: 0, prisms: 3,             worms: 3,  interval: 360 },
     // ── Stage 4 (gravity storms, deep void) — drones and swarms alternate ────
-    { eyes: 0, bipeds: 0, drones: 0,  shields: 3, swarms: 5, prisms: 3, hornets: 2, interval: 320 },
-    { eyes: 0, bipeds: 0, drones: 12, shields: 3, swarms: 0, prisms: 3, hornets: 3, interval: 280 },
-    { eyes: 0, bipeds: 0, drones: 0,  shields: 4, swarms: 5, prisms: 3, hornets: 3, interval: 260 },
-    { eyes: 0, bipeds: 0, drones: 13, shields: 4, swarms: 0, prisms: 4, hornets: 4, interval: 240 },
-    { eyes: 0, bipeds: 0, drones: 0,  shields: 4, swarms: 6, prisms: 4, hornets: 4, interval: 220 },
+    { eyes: 0, bipeds: 0, drones: 0,  shields: 4, swarms: 2, prisms: 4, hornets: 4, worms: 2, interval: 380 },
+    { eyes: 2, bipeds: 2, drones: 4,  shields: 3, swarms: 0, prisms: 3, hornets: 3, worms: 2, interval: 340 },
+    { eyes: 0, bipeds: 0, drones: 0,  shields: 5, swarms: 2, prisms: 4, hornets: 5, worms: 3, interval: 320 },
+    { eyes: 3, bipeds: 2, drones: 4,  shields: 4, swarms: 0, prisms: 4, hornets: 4, worms: 3, interval: 300 },
+    { eyes: 0, bipeds: 0, drones: 0,  shields: 5, swarms: 2, prisms: 5, hornets: 5, worms: 3, interval: 280 },
 ];
 
 const STAGE3_WAVE = 11; // first wave of Stage 3
@@ -40,11 +40,11 @@ const RAINBOW_COLORS  = [0xff2222, 0xff8800, 0xffee00, 0x00ff44, 0x00eeff, 0x448
 const PRISM_BG_COLS   = [0x220008, 0x221100, 0x222200, 0x002209, 0x002222, 0x001422, 0x180022];
 
 const PRISM_WAVES = [
-    { mimics: 3, prisms: 4, swarms: 4, drones: 0, interval: 480 },
-    { mimics: 4, prisms: 5, swarms: 0, drones: 6, interval: 430 },
-    { mimics: 5, prisms: 6, swarms: 5, drones: 0, interval: 380 },
-    { mimics: 6, prisms: 7, swarms: 0, drones: 8, interval: 340 },
-    { mimics: 7, prisms: 8, swarms: 6, drones: 0, interval: 300 },
+    { mimics: 3, prisms: 4, swarms: 1, scarabs: 3,                      drones: 0, interval: 480 },
+    { mimics: 4, prisms: 5, swarms: 0,                                   drones: 6, interval: 430 },
+    { mimics: 5, prisms: 6, swarms: 2, scarabs: 2, hornets: 2,           drones: 0, interval: 380 },
+    { mimics: 6, prisms: 7, swarms: 0,                                   drones: 8, interval: 340 },
+    { mimics: 7, prisms: 8, swarms: 2, shields: 2, hornets: 4,           drones: 0, interval: 300 },
 ];
 
 // ─── BACKGROUND DECORATIONS (PixelLab space objects) ─────────────────────────
@@ -1721,15 +1721,16 @@ class MenuScene extends Phaser.Scene {
         if (this._settingsOpen) return;
         this._settingsOpen = true;
 
-        const KEYS   = ['space-shooter-music', 'space-shooter-sfx', 'space-shooter-shake', 'space-shooter-combopop'];
-        const LABELS = ['MUSIC', 'SFX', 'SCREEN SHAKE', 'COMBO POPUPS'];
+        const KEYS   = ['space-shooter-music', 'space-shooter-sfx', 'space-shooter-shake', 'space-shooter-combopop', 'space-shooter-debug'];
+        const LABELS = ['MUSIC', 'SFX', 'SCREEN SHAKE', 'COMBO POPUPS', 'DEBUG MODE'];
         const DESCS  = [
             'Background music on or off',
             'Sound effects on or off',
             'Camera shake when taking damage',
             'Show COMBO ×2 ×3 ×4 popups',
+            'TAB: W1→W6→W11→W16→W21  Q: W1/W11→VoidLeech',
         ];
-        let vals   = KEYS.map(k => (localStorage.getItem(k) || 'on') === 'on');
+        let vals   = KEYS.map(k => (localStorage.getItem(k) ?? 'on') === 'on');
         let selSet = 0;
 
         const D   = 20;
@@ -1776,8 +1777,8 @@ class MenuScene extends Phaser.Scene {
             kb.off('keydown-LEFT',  _tog); kb.off('keydown-RIGHT', _tog); kb.off('keydown-A', _tog); kb.off('keydown-D', _tog);
             kb.off('keydown-ESC',   _close);
         };
-        const _up  = () => { selSet = (selSet - 1 + 4) % 4; render(); this._playSelectSound(); };
-        const _dn  = () => { selSet = (selSet + 1)     % 4; render(); this._playSelectSound(); };
+        const _up  = () => { selSet = (selSet - 1 + KEYS.length) % KEYS.length; render(); this._playSelectSound(); };
+        const _dn  = () => { selSet = (selSet + 1)              % KEYS.length; render(); this._playSelectSound(); };
         const _tog = () => {
             vals[selSet] = !vals[selSet];
             localStorage.setItem(KEYS[selSet], vals[selSet] ? 'on' : 'off');
@@ -2518,6 +2519,63 @@ class GameScene extends Phaser.Scene {
         this.eKey     = this.input.keyboard.addKey('E');
         this.input.keyboard.on('keydown-ESC', () => {
             if (!this.paused && this.lives > 0) this._openPauseMenu();
+        });
+        this.input.keyboard.on('keydown-TAB', (e) => {
+            e.preventDefault();
+            if (localStorage.getItem('space-shooter-debug') !== 'on') return;
+            const skipMap = { 1: 6, 6: 11, 11: 16, 16: 21 };
+            const target = skipMap[this.waveNum];
+            if (target === undefined || this.gameOver || this.dead || this.paused) return;
+            [this.enemies, this.enemyBolts, this.asteroids, this.blackholes,
+             this.bossFireballs, this.midBossFireballs, this.homingFireballs,
+             this.ionOrbs, this.phantomDrones, this.prismShards,
+             this.healthCrystals, this.shieldDrops, this.weaponDrops].forEach(g => g.clear(true, true));
+            this.waveQueue = []; this.waveAlive = 0; this.waveState = 'idle';
+            if (target > BOSS_WAVE) this.bossDefeated = true;
+            if (target > WAVES.length) {
+                this.leviathanDefeated = true;
+                this.prismMode = true;
+                this._startPrismDimension();
+            } else {
+                this._startWave(target);
+            }
+        });
+
+        this.input.keyboard.on('keydown-Q', () => {
+            if (localStorage.getItem('space-shooter-debug') !== 'on') return;
+            if (this.gameOver || this.dead || this.paused) return;
+            const _clear = () => {
+                [this.enemies, this.enemyBolts, this.asteroids, this.blackholes,
+                 this.bossFireballs, this.midBossFireballs, this.homingFireballs,
+                 this.ionOrbs, this.phantomDrones, this.prismShards,
+                 this.healthCrystals, this.shieldDrops, this.weaponDrops].forEach(g => g.clear(true, true));
+                this.waveQueue = []; this.waveAlive = 0; this.waveState = 'idle';
+                this.bossBarBg.setVisible(false);
+                this.bossBarFg.setVisible(false);
+                this.bossBarLabel.setVisible(false);
+            };
+            if (this.waveNum === 1) {
+                // Skip to void leech bonus → Stage 3
+                _clear();
+                this.bossDefeated = true;
+                this.bossActive = false;
+                if (this.bossSprite && this.bossSprite.active) { this.bossSprite.destroy(); this.bossSprite = null; }
+                this._showVoidLeechPortal(() => this._beginVoidLeechBonus(() => this._beginStage3()));
+            } else if (this.waveNum === 11) {
+                // Skip to void leech bonus → Stage 5
+                _clear();
+                this.bossDefeated = true;
+                this.bossActive = false;
+                this.leviathanActive = false;
+                this.leviathanDefeated = true;
+                this.levShieldActive = false;
+                if (this.leviathanSprite && this.leviathanSprite.active) { this.leviathanSprite.destroy(); this.leviathanSprite = null; }
+                if (this.levShieldGfx) { this.levShieldGfx.destroy(); this.levShieldGfx = null; }
+                this._showVoidLeechPortal(() => this._beginVoidLeechBonus(() => {
+                    this.prismMode = true;
+                    this._startPrismDimension();
+                }));
+            }
         });
         this.mKey     = this.input.keyboard.addKey('M');
 
@@ -3330,7 +3388,7 @@ class GameScene extends Phaser.Scene {
                     e.x = Phaser.Math.Clamp(e.getData('startX') + Math.sin((time - e.getData('startTime')) * 0.0018) * 65, 18, W - 18);
                     const nf = e.getData('nextFire');
                     if (time >= nf) {
-                        e.setData('nextFire', time + Phaser.Math.Between(7000, 10000) / this.enemyFireMult);
+                        e.setData('nextFire', time + Phaser.Math.Between(10000, 14000) / this.enemyFireMult);
                         this._fireWormSpread(e.x, e.y);
                         e.play('worm-atk', true);
                         e.once('animationcomplete', () => { if (e.active) e.play('worm-move', true); });
@@ -3401,7 +3459,7 @@ class GameScene extends Phaser.Scene {
     _spawnWorm(time) {
         const x = Phaser.Math.Between(50, W - 50);
         const e = this.add.sprite(x, -44, 'worm-m0').play('worm-move').setDepth(3).setScale(0.88);
-        e.setData({ type: 'worm', hp: 5, vy: 36, startX: x, startTime: time, nextFire: time + Phaser.Math.Between(2500, 4000) });
+        e.setData({ type: 'worm', hp: 5, vy: 22, startX: x, startTime: time, nextFire: time + Phaser.Math.Between(4000, 6000) });
         this.enemies.add(e);
         this.waveAlive++;
     }
@@ -3856,14 +3914,14 @@ class GameScene extends Phaser.Scene {
         let fi = 0;
         const doFlash = () => {
             if (fi >= flashColors.length) {
-                // Final white-out then restore bg and continue
-                this.cameras.main.flash(600, 255, 255, 255);
-                this.time.delayedCall(300, () => {
-                    this.tweens.add({ targets: this.bgDeep,  alpha: 1,   duration: 900 });
-                    this.tweens.add({ targets: this.bgStars, alpha: 0.4, duration: 900 });
+                // Final white-out — hide backgrounds while screen is white, then let next
+                // stage set its tint and tween alpha back in from 0 (no flicker)
+                this.cameras.main.flash(700, 255, 255, 255);
+                this.time.delayedCall(80, () => {
+                    this.bgDeep.setAlpha(0);
+                    this.bgStars.setAlpha(0);
                     this.bgDeep.clearTint();
                     this.bgStars.clearTint();
-                    // Pull player to bottom-centre if off to either side
                     if (this.player && this.player.active) {
                         this.tweens.add({
                             targets: this.player,
@@ -3872,8 +3930,9 @@ class GameScene extends Phaser.Scene {
                         });
                     }
                     if (this.voidLeechOnComplete) {
-                        this.time.delayedCall(800, this.voidLeechOnComplete, [], this);
+                        const fn = this.voidLeechOnComplete;
                         this.voidLeechOnComplete = null;
+                        fn();
                     }
                 });
                 return;
@@ -4864,6 +4923,8 @@ class GameScene extends Phaser.Scene {
                         this.waveAlive = Math.max(0, this.waveAlive - 1);
                         const crystalChance = isSwarm ? 0.08 : isPrism ? 0.12 : isMimic ? 0 : isDrone ? 0.10 : isCarrier ? 0.10 : isScarab ? 0.10 : isWorm ? 0.10 : isHornet ? 0.08 : 0.18;
                         if (Math.random() < crystalChance) this._spawnHealthCrystal(e.x, e.y);
+                        const shieldChance = isSwarm ? 0.05 : isPrism ? 0.08 : isMimic ? 0.10 : isDrone ? 0.05 : isCarrier ? 0.12 : isScarab ? 0.10 : isWorm ? 0.12 : isHornet ? 0.08 : isBiped ? 0.08 : 0.05;
+                        if (Math.random() < shieldChance * this.shieldDropMult) this._spawnShieldDrop(e.x, e.y);
                         const wChance = isDrone ? 0.15 : isBiped ? 0.10 : isCarrier ? 0.15 : (isPrism || isMimic) ? 0 : isScarab ? 0.10 : isWorm ? 0.10 : isHornet ? 0.05 : 0.05;
                         if (this.bossDefeated && Math.random() < wChance) this._spawnWeaponDrop(e.x, e.y);
                         if (this.endlessMode && Math.random() < 0.10) this._spawnEndlessDrop(e.x, e.y);
@@ -6456,7 +6517,7 @@ class GameScene extends Phaser.Scene {
                     if (this.sfx) this.sfx.newHighScore();
                 }
                 const best = Math.max(this.score, prev);
-                const label = this.endlessMode ? 'ENDLESS  SCORE' : this.prismMode ? 'PRISM  DEFEATED' : 'GAME  OVER';
+                const label = this.endlessMode ? 'ENDLESS  SCORE' : this.prismMode ? 'STAGE  5  GAME  OVER' : 'GAME  OVER';
                 let msg = `${label}\n\nScore  ${String(this.score).padStart(6,'0')}\nBest   ${String(best).padStart(6,'0')}`;
                 if (this.endlessMode) {
                     const bw = this.endlessBestWave;
@@ -7183,8 +7244,12 @@ class GameScene extends Phaser.Scene {
                     this._registerKill(10000);
                     this.time.delayedCall(800, () => this._endlessTierTransition());
                 } else {
-                    this.prismMode = true;
-                    this.time.delayedCall(1200, () => this._startPrismDimension());
+                    this.time.delayedCall(900, () => {
+                        this._showVoidLeechPortal(() => this._beginVoidLeechBonus(() => {
+                            this.prismMode = true;
+                            this._startPrismDimension();
+                        }));
+                    });
                 }
                 return;
             }
@@ -7227,8 +7292,8 @@ class GameScene extends Phaser.Scene {
         this.stageBack.setTint(0x220044);
 
         // Announce
-        this.announceTxt.setText('PRISM\nDIMENSION').setAlpha(0)
-            .setStyle({ fill: '#ff88ff', fontSize: '36px', stroke: '#220044', strokeThickness: 6 });
+        this.announceTxt.setText('STAGE  5\nPRISM  DIMENSION').setAlpha(0)
+            .setStyle({ fill: '#ff88ff', fontSize: '30px', stroke: '#220044', strokeThickness: 6 });
         this.tweens.add({
             targets: this.announceTxt, alpha: 1, duration: 400,
             onComplete: () => {
@@ -8013,7 +8078,7 @@ class TrueEndingScene extends Phaser.Scene {
         if (newHi) localStorage.setItem(hsKeyTE, score);
         const best = Math.max(score, prev);
 
-        // Unlock Stage 4 — Prism Dimension
+        // Reached Stage 5 — Prism Dimension
         localStorage.setItem('space-shooter-stage4-unlocked', '1');
 
         if (this.sound && this.sound.context) {
@@ -8165,7 +8230,7 @@ class FinalCreditsScene extends Phaser.Scene {
         const titleCols = ['#ff2222','#ff8800','#ffee00','#00ff44','#00eeff','#4488ff','#cc00ff'];
         const SEP = '─────────────────────────────────';
         const lines = [
-            { t: '✦  PRISM  DIMENSION  CONQUERED  ✦', s: '22px', c: '#ff88ff', sp: 16, rainbow: true },
+            { t: '✦  STAGE  5:  PRISM  DIMENSION  CONQUERED  ✦', s: '19px', c: '#ff88ff', sp: 16, rainbow: true },
             { t: '', s: '8px', c: '#fff', sp: 6 },
             { t: `FINAL  SCORE:  ${String(score).padStart(8,'0')}`, s: '18px', c: '#ffee00', sp: 10 },
             { t: `Difficulty:  ${diffLabel}`, s: '13px', c: '#aaaaaa', sp: 8 },

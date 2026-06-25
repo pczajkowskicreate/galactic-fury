@@ -9,7 +9,7 @@
 6. [Bosses](#bosses)
 7. [Hazards](#hazards)
 8. [Endless Mode](#endless-mode)
-9. [Prism Dimension](#prism-dimension)
+9. [Stage 5: Prism Dimension](#stage-5-prism-dimension)
 10. [Power-ups & Pickups](#power-ups--pickups)
 11. [Systems](#systems)
 12. [Code Locations — Quick Edit Guide](#code-locations--quick-edit-guide)
@@ -20,7 +20,7 @@
 
 | Mode | Key | Description |
 |------|-----|-------------|
-| Campaign | SPACE | 5 stages, 25 waves total — Stage 4 ends with The Leviathan, Stage 5 is the Prism Dimension |
+| Campaign | SPACE | 5 stages, 25 waves total — Stage 4 ends with The Leviathan (boss 5), Stage 5 is the Prism Dimension ending with the Prism Overlord (boss 6) |
 | Endless | E | Repeating tier loop after campaign waves, scales with each lap |
 
 ---
@@ -93,7 +93,7 @@ Spawned by Prism Entity and Mimic on death — 5 shards per kill.
 
 ## Campaign Stages & Waves
 
-Wave data lives in the `WAVES` array at the top of `game.js` (lines 9–34). 20 campaign waves total, followed by 5 Prism Dimension waves.
+Wave data lives in the `WAVES` array at the top of `game.js` (lines 9–34). 20 campaign waves (Stages 1–4), followed by 5 Stage 5 waves in `PRISM_WAVES` (lines 42–48).
 Each entry: `{ eyes, bipeds, drones, shields, swarms, prisms, scarabs, worms, hornets, interval }`.
 `interval` = ms between enemy spawns (lower = faster).
 
@@ -132,16 +132,16 @@ Post-boss. Drones, shields, and prism enemies introduced. Weapon drops enabled.
 ---
 
 ### Stage 3 — Waves 11–15 (Void Run)
-No eyes or bipeds. Void atmosphere. Stage 3 music plays.
-First wave is `STAGE3_WAVE = 11`.
+Void atmosphere. Drones and swarms alternate — never both in the same wave. Stage 3 music plays.
+First wave is `STAGE3_WAVE = 11`. `swarms: N` = N groups of 4 aliens each.
 
-| Wave | Drones | Swarms | Shields | Prisms | Scarabs | Worms | Interval |
-|------|--------|--------|---------|--------|---------|-------|----------|
-| 11 | 7 | — | 3 | 2 | 2 | — | 520ms |
-| 12 | — | 4 | 3 | 2 | 2 | 1 | 480ms |
-| 13 | 8 | — | 3 | 3 | — | 2 | 440ms |
-| 14 | — | 5 | 4 | 3 | 1 | 2 | 400ms |
-| 15 | 10 | — | 4 | 3 | — | 3 | 360ms |
+| Wave | Eyes | Bipeds | Drones | Swarms | Shields | Prisms | Scarabs | Worms | Interval |
+|------|------|--------|--------|--------|---------|--------|---------|-------|----------|
+| 11 | 3 | 1 | 4 | — | 4 | 2 | 3 | — | 520ms |
+| 12 | — | — | — | 2 | 5 | 3 | 3 | 3 | 480ms |
+| 13 | 2 | 2 | 4 | — | 4 | 3 | — | 3 | 440ms |
+| 14 | — | — | — | 2 | 5 | 4 | 2 | 3 | 400ms |
+| 15 | 3 | 1 | 4 | — | 4 | 3 | — | 3 | 360ms |
 
 **Hazard triggers:**
 - After wave 12 → **Ion Storm** → then wave 13
@@ -152,16 +152,16 @@ First wave is `STAGE3_WAVE = 11`.
 ---
 
 ### Stage 4 — Waves 16–20 (Deep Void)
-Hornets introduced. Drones/swarms alternate. Intense pace.
-First wave is `STAGE4_WAVE = 16`.
+Hornets introduced. Worms continue. Drones/swarms alternate. Intense pace.
+First wave is `STAGE4_WAVE = 16`. `swarms: N` = N groups of 4 aliens each.
 
-| Wave | Drones | Swarms | Shields | Prisms | Hornets | Interval |
-|------|--------|--------|---------|--------|---------|----------|
-| 16 | — | 5 | 3 | 3 | 2 | 320ms |
-| 17 | 12 | — | 3 | 3 | 3 | 280ms |
-| 18 | — | 5 | 4 | 3 | 3 | 260ms |
-| 19 | 13 | — | 4 | 4 | 4 | 240ms |
-| 20 | — | 6 | 4 | 4 | 4 | 220ms |
+| Wave | Eyes | Bipeds | Drones | Swarms | Shields | Prisms | Hornets | Worms | Interval |
+|------|------|--------|--------|--------|---------|--------|---------|-------|----------|
+| 16 | — | — | — | 2 | 4 | 4 | 4 | 2 | 380ms |
+| 17 | 2 | 2 | 4 | — | 3 | 3 | 3 | 2 | 340ms |
+| 18 | — | — | — | 2 | 5 | 4 | 5 | 3 | 320ms |
+| 19 | 3 | 2 | 4 | — | 4 | 4 | 4 | 3 | 300ms |
+| 20 | — | — | — | 2 | 5 | 5 | 5 | 3 | 280ms |
 
 **Hazard triggers:**
 - After wave 17 → **Gravity Storm** → then wave 18
@@ -231,11 +231,11 @@ First wave is `STAGE4_WAVE = 16`.
   - Visual: thin pulsing purple ring (~68px radius) around boss while active
   - Deflect radius: 95px (outside body hitbox). Intercepted bolt is removed from `bolts` and re-added to `enemyBolts`.
   - Activation: flash + camera shake + "DARK SHIELD" warning text + spark burst
-- **On death** → Victory screen, unlocks Prism Dimension
+- **On death** → transitions to Stage 5: Prism Dimension
 
 ---
 
-### Prism Overlord (Prism Dimension only)
+### Prism Overlord — Stage 5 Final Boss (Boss 6)
 - **HP**: 120 × `bossHpMult`
 - **Sprite**: Procedurally drawn spinning hexagon (rainbow color-cycling)
 - **Phases**: 3 (at 65% and 30% HP)
@@ -243,7 +243,7 @@ First wave is `STAGE4_WAVE = 16`.
   - Phase 2 (Chromatic Surge): 5-bolt fan + shard ring bursts
   - Phase 3 (Prism Fury): Faster fire, wider spreads, more shards
 - **Bolt deflect**: 35% chance per hit — **Hard mode only**
-- **On death** → `FinalCreditsScene` (scrolling victory credits). Cannot be dismissed for the first 5 seconds — prevents accidental skip from the killing shot.
+- **On death** → `FinalCreditsScene` ("STAGE 5: PRISM DIMENSION CONQUERED" scrolling credits). Cannot be dismissed for the first 5 seconds — prevents accidental skip from the killing shot.
 
 ---
 
@@ -331,21 +331,20 @@ Difficulty scales each lap (`endlessDifficulty` / `lap` variable, 0-indexed).
 
 ---
 
-## Prism Waves (Endless Waves 21–25)
+## Stage 5: Prism Dimension — Waves 21–25
 
-The 5 Prism waves (`PRISM_WAVES` array, lines 37–43) are now reached as endless waves 21–25. They are not a separate mode; the counter simply continues from wave 20 upward.
+Stage 5 begins after the Leviathan dies and a **Void Leech bonus encounter** plays (same as after the Stage 2 Final Boss). The `PRISM_WAVES` array (lines 42–48) drives 5 campaign waves before the Prism Overlord final boss.
+`swarms: N` = N groups of 4 aliens each. Background cycles through 7 dark rainbow colors (`PRISM_BG_COLS`). 40% chance of Crystal Event between waves.
 
-| Endless Wave | Mimics | Prisms | Swarms | Drones | Interval |
-|-------------|--------|--------|--------|--------|----------|
-| 21 | 3 | 4 | 2 | 2 | 480ms |
-| 22 | 4 | 5 | 3 | 3 | 430ms |
-| 23 | 5 | 6 | 4 | 3 | 380ms |
-| 24 | 6 | 7 | 5 | 4 | 340ms |
-| 25 | 7 | 8 | 6 | 5 | 300ms |
+| Wave | Mimics | Prisms | Swarms | Scarabs | Hornets | Carriers | Drones | Interval |
+|------|--------|--------|--------|---------|---------|----------|--------|----------|
+| 21 | 3 | 4 | 1 | 3 | — | — | — | 480ms |
+| 22 | 4 | 5 | — | — | — | — | 6 | 430ms |
+| 23 | 5 | 6 | 2 | 2 | 2 | — | — | 380ms |
+| 24 | 6 | 7 | — | — | — | — | 8 | 340ms |
+| 25 | 7 | 8 | 2 | — | 4 | 2 | — | 300ms |
 
-After wave 25: Prism Overlord boss.
-Background cycles through 7 dark rainbow colors (`PRISM_BG_COLS`).
-40% chance of Crystal Event between waves.
+After wave 25: **Prism Overlord** (6th and final boss) → `FinalCreditsScene`.
 
 ---
 
@@ -365,24 +364,24 @@ Weapons time out after a set duration or reset when the player is hit.
 
 ### Enemy Drop Rates
 
-| Enemy | ♥ Health drop | 🔫 Weapon drop¹ | 🛡 Shield drop |
+| Enemy | ♥ Health drop | 🔫 Weapon drop¹ | 🛡 Shield drop² |
 |-------|---------------|-----------------|----------------|
-| Flying Eye | 18% | 5% | — |
-| Biped | 18% | 10% | — |
-| Kamikaze Drone | 10% | 15% | — |
-| Shield Carrier | 10% | 15% | — |
-| Scarab Bomber | 10% | 10% | — |
-| Spectrum Worm | 10% | 10% | — |
-| Demon Hornet | 8% | 5% | — |
-| Swarm Alien | 8% | 5% | — |
-| Prism Entity | 12% | 0% | — |
-| Mimic | 10% | 0% | — |
-| Void Leech | ~17.5% | 0% | ~17.5%² |
-| Asteroid | 0% | 0% | 15%³ |
+| Flying Eye | 18% | 5% | 5% |
+| Biped | 18% | 10% | 8% |
+| Kamikaze Drone | 10% | 15% | 5% |
+| Shield Carrier | 10% | 15% | 12% |
+| Scarab Bomber | 10% | 10% | 10% |
+| Spectrum Worm | 10% | 10% | 12% |
+| Demon Hornet | 8% | 5% | 8% |
+| Swarm Alien | 8% | 5% | 5% |
+| Prism Entity | 12% | 0% | 8% |
+| Mimic | 10% | 0% | 10% |
+| Void Leech | ~17.5% | 0% | ~17.5%³ |
+| Asteroid | 0% | 0% | 15%² |
 
 ¹ Weapon drops only spawn after the Stage 1 boss is defeated (`bossDefeated = true`).
-² Void Leech has a 35% drop chance on death; outcome is a 50/50 coin flip between health and shield.
-³ Asteroid shield drop is multiplied by difficulty: Easy ×1.5 / Normal ×1.0 / Hard ×0.5.
+² Enemy and asteroid shield drops are multiplied by difficulty: Easy ×1.5 / Normal ×1.0 / Hard ×0.5. Values shown are Normal baseline.
+³ Void Leech has a 35% drop chance on death; outcome is a 50/50 coin flip between health and shield (not scaled by difficulty).
 
 ### Crystal Events (random, between waves)
 40% chance per non-hazard transition (35% in Endless). Shoot the crystal to trigger:
@@ -485,7 +484,7 @@ Managed by `createGameBgPool()` / `updateGameBgPool()` global functions. Called 
 | When Stage 3 starts | `STAGE3_WAVE` constant (= 11) |
 | When Stage 4 starts | `STAGE4_WAVE` constant (= 16) |
 | Boss wave trigger | `BOSS_WAVE` constant, line 7 |
-| Prism Dimension waves | `PRISM_WAVES` array, lines 37–43 |
+| Stage 5: Prism Dimension waves | `PRISM_WAVES` array, lines 42–48 |
 | Difficulty multipliers | `create()` function, lines 1398–1402 |
 | Hazard triggers between waves | `_updateWave()`, lines 2049–2115 |
 | Stage 1 Boss behavior | `_updateBoss()`, line 2358 |

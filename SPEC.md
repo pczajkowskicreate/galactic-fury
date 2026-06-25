@@ -1,13 +1,13 @@
 # Retro Space Shooter — Game Specification (Current Build)
 
-> Last updated: 2026-06-18. All milestones M1–M13 complete. Post-release polish applied (see bottom of file).
+> Last updated: 2026-06-25. All milestones M1–M13 complete. Post-release polish applied (see bottom of file).
 
 ---
 
 ## Overview
 
 A vertical-scrolling retro space shooter built with **Phaser 3** (browser, no build step required).
-The player pilots a spaceship through 5 escalating waves of enemies and faces a final mechanized boss.
+The player pilots through **5 stages** (25 waves total) and faces 6 bosses, culminating in the Prism Overlord at the end of Stage 5: Prism Dimension.
 
 ---
 
@@ -699,32 +699,31 @@ Three new drops that only appear in endless mode (enemies have +10% drop rate in
 
 ---
 
-## Milestone 12 — Prism Dimension (Stage 4 Concept)
+## Milestone 12 — Prism Dimension (Stage 5)
 
-**Goal:** A fourth stage unlocked by completing the True Ending on Hard difficulty. Pure visual spectacle — chromatic, prismatic, dreamlike. A victory lap for skilled players.
+**Goal:** A fifth and final campaign stage that begins immediately after the Leviathan dies. Pure visual spectacle — chromatic, prismatic, dreamlike. A victory lap for skilled players.
 
-### Stage 4 Transition
-- After `TrueEndingScene`, Hard difficulty players see a secret prompt: `"Something stirs beyond the void... [ENTER]"`
-- Stage 4 begins with a white flash → background becomes a deep shifting rainbow gradient (HSL cycle, 6s period)
-- All planets visible again but tinted in shifting colors
-- `Stage4Music` class: upbeat, major key, 182 BPM — triumphant and energetic
+### Stage 5 Transition
+- Leviathan death sequence ends → `this.prismMode = true` → `_startPrismDimension()` fires automatically
+- Stage 5 begins → background cycles through `PRISM_BG_COLS` (7 dark rainbow colors, every 700 ms)
+- Announcement text: "STAGE 5 / PRISM DIMENSION" in `#ff88ff`
+- `stage3Music` continues; `prismOverlordPhase` SFX fires on entry
 
-### Prism Dimension Enemies
-All existing enemies appear with colorful chromatic tints (random vivid color per spawn). New enemy:
+### Stage 5 Enemies
+All existing enemies appear with colorful chromatic tints. New enemy:
 
 **Chromatic Mimic** (new type `'mimic'`)
 - Copies the last weapon type the player fired: if player fires spread, mimic shoots 3-bolt spread back; if rapid, fires rapid single bolts
-- 3 HP, worth +250 pts
-- Asset: PixelLab generated — a mirrored version of the player ship tinted in a shifting rainbow
+- 4 HP, worth +350 pts
+- Asset: PixelLab generated mimic sprite (`mimic2-idle` / `mimic2-move` animations)
 
-### Stage 4 Boss — The Prism Overlord
-- PixelLab generated: a giant crystalline geometric entity, top-down, 256px
-- **80 HP** (scaled by `bossHpMult`); 4 phases, each adding a new attack layer
-- Phase 1: **Color Beams** — fires 6 colored beams in a rotating pinwheel (like spiral volley but color-coded)
-- Phase 2: **Prism Mirror** — player bolts occasionally reflect off an invisible mirror plane and come back
-- Phase 3: **Crystal Rain** — 10 small crystals rain from the top at random X positions (dodge them)
-- Phase 4: **Full Spectrum** — all three previous attacks simultaneously + summons 2 Prism enemies
-- Death: rainbow explosion chain (20 bursts) → `FinalCreditsScene` with animated star field and scrolling credits
+### Stage 5 Boss — The Prism Overlord (Boss 6, Final Boss)
+- Procedurally drawn spinning hexagon (rainbow color-cycling via `_updatePrismOverlord`)
+- **120 HP** (scaled by `bossHpMult`); 3 phases
+- Phase 1: Fan of 3 rainbow bolts aimed at player
+- Phase 2 (Chromatic Surge): 5-bolt fan + shard ring bursts
+- Phase 3 (Prism Fury): Faster fire, wider spreads, more shards; bolt deflect 35% on Hard
+- Death: rainbow explosion chain (20 bursts) → `FinalCreditsScene` ("STAGE 5: PRISM DIMENSION CONQUERED" scrolling credits)
 
 ---
 
@@ -901,7 +900,7 @@ The current `FinalCreditsScene` shows static text. Replace with the scrolling cr
 **Credit text content:**
 
 ```
-  ✦  PRISM  DIMENSION  CONQUERED  ✦
+  ✦  STAGE  5:  PRISM  DIMENSION  CONQUERED  ✦
 
   FINAL  SCORE
   [score]     [difficulty label]
@@ -990,7 +989,7 @@ Small but visible touches that improve the first impression:
 
 ```html
 <title>Prism Space Shooter</title>
-<meta name="description" content="A retro vertical space shooter — 4 stages, endless survival mode, and a secret Prism Dimension. Built with Phaser 3.">
+<meta name="description" content="A retro vertical space shooter — 5 stages, 6 bosses, endless survival mode. Built with Phaser 3.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta charset="UTF-8">
 ```
@@ -1005,7 +1004,7 @@ No favicon needed for initial publish — browsers show a blank tab icon gracefu
 A retro vertical space shooter built with Phaser 3 and pure Web Audio API synthesis.
 
 ## Features
-- 3 story stages + secret Prism Dimension (Stage 4)
+- 5 campaign stages + endless survival mode
 - Endless survival mode with 3-tier difficulty cycle
 - 6 boss encounters, chromatic combo system, crystal events
 - Fully synthesized sound — no audio files
@@ -1084,8 +1083,8 @@ Applied after all milestones were complete. No new milestone — publish-quality
 | **Pause scanlines** | Dark scanline overlay added to pause menu background |
 | **H key during gameplay** | Opens the How to Play guide directly from gameplay (same as pause → HOW TO PLAY) |
 | **Pause freezes hazards** | `time.timeScale = 0` + `tweens.timeScale = 0` on pause; restored to 1 on resume — ion storm, meteor, black hole timers all freeze |
-| **Prism Dimension removed from menu** | P (Prism Dimension) option removed from MenuScene and TrueEndingScene; the 5 PRISM_WAVES now appear as endless waves 21–25 with absolute wave numbers |
-| **TrueEndingScene 2-option layout** | Only `[MENU]` and `[ENDLESS]` — PRISM option removed |
+| **Stage 5 is a campaign stage** | Prism Dimension is now Stage 5 of the campaign — reached automatically after the Leviathan dies. `PRISM_WAVES` drives waves 21–25. No separate menu unlock or Hard requirement. |
+| **TrueEndingScene 2-option layout** | Only `[MENU]` and `[ENDLESS]` — Stage 5 is part of the campaign, not a post-credits unlock. |
 
 ### Bug Fixes
 
