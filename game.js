@@ -280,28 +280,36 @@ function createGameBgPool(scene) {
     return { scene, items: [], spawnTimer: 0, nextSpawn: Phaser.Math.FloatBetween(3, 7) };
 }
 
+const PRISM_BG_TINTS = [0xff88ff, 0x88ffff, 0xffaa44, 0x44ffcc, 0xff4499, 0xaa88ff, 0x44ffff, 0xffff66, 0xff66aa, 0x66ffaa];
+
 function updateGameBgPool(pool, dt) {
     const { scene } = pool;
     const F = Phaser.Math.FloatBetween;
     const B = Phaser.Math.Between;
+    const isPrism = !!scene.prismMode;
+    const cap = isPrism ? 16 : 8;
+    const interval = isPrism ? F(1.5, 3.5) : F(3.5, 8.5);
 
     pool.spawnTimer += dt;
-    if (pool.spawnTimer >= pool.nextSpawn && pool.items.length < 8) {
+    if (pool.spawnTimer >= pool.nextSpawn && pool.items.length < cap) {
         pool.spawnTimer = 0;
-        pool.nextSpawn = F(3.5, 8.5);
+        pool.nextSpawn = interval;
 
         // Weighted type: galaxy 30 | nebula 25 | cloud 22 | station 15 | planet 8
         const r = Math.random() * 100;
-        let key, sc, ta, vy, rotSpd, depth, tint;
+        let key, sc, ta, vy, vx = 0, rotSpd, depth, tint;
 
-        // In prism mode, 40% chance to spawn a crystal geode or flower instead
-        if (scene.prismMode && Math.random() < 0.40) {
+        // In prism mode, 65% chance to spawn a crystal decoration
+        if (isPrism && Math.random() < 0.65) {
             const PRISM_DEC = ['prism-geode-a','prism-geode-b','prism-geode-c','prism-geode-d','prism-flower-a','prism-flower-b'];
             key = PRISM_DEC[B(0, PRISM_DEC.length - 1)];
-            sc = F(0.30, 0.70);  ta = F(0.10, 0.28);
-            vy = F(5, 14);
-            rotSpd = F(0.15, 0.80) * (Math.random() < 0.5 ? 1 : -1);
-            depth = 1;  tint = null;
+            sc = F(0.18, 1.00);
+            ta = F(0.10, 0.38);
+            vy = F(3, 16);
+            vx = Math.random() < 0.45 ? F(-18, 18) : 0;
+            rotSpd = F(0.25, 1.40) * (Math.random() < 0.5 ? 1 : -1);
+            depth = 1;
+            tint = PRISM_BG_TINTS[B(0, PRISM_BG_TINTS.length - 1)];
         } else if (r < 30) {
             key = GAME_BG_GALAXIES[B(0, GAME_BG_GALAXIES.length - 1)];
             sc = F(0.25, 0.62);  ta = F(0.18, 0.50);
@@ -331,7 +339,7 @@ function updateGameBgPool(pool, dt) {
             // Rare planet — bigger scale = slower drift
             key = GAME_BG_PLANETS[B(0, GAME_BG_PLANETS.length - 1)];
             sc = F(0.55, 1.25);  ta = F(0.28, 0.55);
-            vy = 22 - ((sc - 0.55) / 0.70) * 15;  // 22 px/s at sc=0.55, ~7 px/s at sc=1.25
+            vy = 22 - ((sc - 0.55) / 0.70) * 15;
             rotSpd = F(0.3, 1.5) * (Math.random() < 0.5 ? 1 : -1);
             depth = 2;  tint = BG_DEC_TINTS[B(0, BG_DEC_TINTS.length - 1)];
         }
@@ -339,14 +347,16 @@ function updateGameBgPool(pool, dt) {
         const img = scene.add.image(B(30, W - 30), -150, key)
             .setDepth(depth).setScale(sc).setAlpha(ta).setAngle(B(0, 359));
         if (tint) img.setTint(tint);
-        pool.items.push({ img, vy, rotSpd });
+        pool.items.push({ img, vx, vy, rotSpd });
     }
 
     for (let i = pool.items.length - 1; i >= 0; i--) {
         const d = pool.items[i];
-        d.img.y     += d.vy      * dt;
-        d.img.angle += d.rotSpd  * dt;
-        if (d.img.y > H + 300) {
+        d.img.y     += d.vy        * dt;
+        d.img.x     += (d.vx || 0) * dt;
+        d.img.angle += d.rotSpd    * dt;
+        const offScreen = d.img.y > H + 300 || d.img.x < -300 || d.img.x > W + 300;
+        if (offScreen) {
             d.img.destroy();
             pool.items.splice(i, 1);
         }
