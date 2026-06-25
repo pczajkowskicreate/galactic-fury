@@ -4994,6 +4994,7 @@ class GameScene extends Phaser.Scene {
                         if (isWorm) {
                             if (!this.rainbowMode) this._activateRainbowMode();
                             this.rainbowEnd = this.time.now + 5000;
+                            this._activateWeapon('rapid');
                         }
                         if (isScarab) {
                             const now = this.time.now;
