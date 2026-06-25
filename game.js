@@ -608,18 +608,18 @@ class SoundFX {
 class Stage3Music {
     constructor(ctx) {
         this.ctx=ctx; this.master=ctx.createGain(); this.master.gain.value=0; this.master.connect(ctx.destination);
-        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null;
+        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null; this._srcs=[];
     }
     start()      { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.10,.7); }
     fadeOut(t=1.5){ this._g(0,t/3.5); if(this._fadeStop)clearTimeout(this._fadeStop); this._fadeStop=setTimeout(()=>{this._fadeStop=null;this.stop();},(t+1.0)*1000); }
     fadeIn()     { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.10,.7); }
-    stop()       { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} this._g(0,.3); }
+    stop()       { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} const _n=this.ctx.currentTime; this._srcs.forEach(n=>{try{n.stop(_n);}catch(e){}});this._srcs=[]; this._g(0,.3); }
     setVol(f)    { this._vf=f; this._g(this._lastV,0.2); }
     _g(v,tc)     { this._lastV=v; const g=this.master.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(v*this._vf,this.ctx.currentTime,tc); }
     _n(f,t,d,v,w='square'){
         const o=this.ctx.createOscillator(),g=this.ctx.createGain();
         o.type=w; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.01);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.01);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.1))*1000);
     }
     _hat(t,v){
@@ -628,7 +628,7 @@ class Stage3Music {
         const s=this.ctx.createBufferSource(); s.buffer=b;
         const f=this.ctx.createBiquadFilter(); f.type='highpass'; f.frequency.value=5500;
         const g=this.ctx.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+.035);
-        s.connect(f); f.connect(g); g.connect(this.master); s.start(t);
+        s.connect(f); f.connect(g); g.connect(this.master); this._srcs.push(s); s.start(t);
         setTimeout(()=>{try{s.disconnect();f.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+.09))*1000);
     }
     _sched(s){
@@ -667,18 +667,18 @@ class Stage3Music {
 class IonStormMusic {
     constructor(ctx) {
         this.ctx=ctx; this.master=ctx.createGain(); this.master.gain.value=0; this.master.connect(ctx.destination);
-        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null;
+        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null; this._srcs=[];
     }
     start()     { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.14,.5); }
     fadeOut(t=1.5){ this._g(0,t/3.5); if(this._fadeStop)clearTimeout(this._fadeStop); this._fadeStop=setTimeout(()=>{this._fadeStop=null;this.stop();},(t+1.0)*1000); }
     fadeIn()    { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.14,.5); }
-    stop()      { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} this._g(0,.3); }
+    stop()      { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} const _n=this.ctx.currentTime; this._srcs.forEach(n=>{try{n.stop(_n);}catch(e){}});this._srcs=[]; this._g(0,.3); }
     setVol(f)   { this._vf=f; this._g(this._lastV,0.2); }
     _g(v,tc)    { this._lastV=v; const g=this.master.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(v*this._vf,this.ctx.currentTime,tc); }
     _n(f,t,d,v,w='square'){
         const o=this.ctx.createOscillator(),g=this.ctx.createGain();
         o.type=w; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.01);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.01);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.1))*1000);
     }
     _noise(t,d,v,cut){
@@ -687,7 +687,7 @@ class IonStormMusic {
         const src=this.ctx.createBufferSource(); src.buffer=buf;
         const flt=this.ctx.createBiquadFilter(); flt.type='bandpass'; flt.frequency.value=cut;
         const g=this.ctx.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        src.connect(flt); flt.connect(g); g.connect(this.master); src.start(t);
+        src.connect(flt); flt.connect(g); g.connect(this.master); this._srcs.push(src); src.start(t);
         setTimeout(()=>{try{src.disconnect();flt.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.15))*1000);
     }
     _sched(s){
@@ -732,18 +732,18 @@ class IonStormMusic {
 class GravityStormMusic {
     constructor(ctx) {
         this.ctx=ctx; this.master=ctx.createGain(); this.master.gain.value=0; this.master.connect(ctx.destination);
-        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null;
+        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null; this._srcs=[];
     }
     start()       { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.13,.9); }
     fadeOut(t=1.5){ this._g(0,t/3.5); if(this._fadeStop)clearTimeout(this._fadeStop); this._fadeStop=setTimeout(()=>{this._fadeStop=null;this.stop();},(t+1.0)*1000); }
     fadeIn()      { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.13,.9); }
-    stop()        { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} this._g(0,.4); }
+    stop()        { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} const _n=this.ctx.currentTime; this._srcs.forEach(n=>{try{n.stop(_n);}catch(e){}});this._srcs=[]; this._g(0,.4); }
     setVol(f)     { this._vf=f; this._g(this._lastV,0.2); }
     _g(v,tc)      { this._lastV=v; const g=this.master.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(v*this._vf,this.ctx.currentTime,tc); }
     _n(f,t,d,v,w='square'){
         const o=this.ctx.createOscillator(),g=this.ctx.createGain();
         o.type=w; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.01);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.01);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.1))*1000);
     }
     _noise(t,d,v,cut){
@@ -752,7 +752,7 @@ class GravityStormMusic {
         const src=this.ctx.createBufferSource(); src.buffer=buf;
         const flt=this.ctx.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=cut;
         const g=this.ctx.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        src.connect(flt); flt.connect(g); g.connect(this.master); src.start(t);
+        src.connect(flt); flt.connect(g); g.connect(this.master); this._srcs.push(src); src.start(t);
         setTimeout(()=>{try{src.disconnect();flt.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.15))*1000);
     }
     _sched(s){
@@ -790,12 +790,12 @@ class GravityStormMusic {
 class VoidLeechMusic {
     constructor(ctx) {
         this.ctx=ctx; this.master=ctx.createGain(); this.master.gain.value=0; this.master.connect(ctx.destination);
-        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null;
+        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null; this._srcs=[];
     }
     start()       { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.11,.9); }
     fadeOut(t=1.5){ this._g(0,t/3.5); if(this._fadeStop)clearTimeout(this._fadeStop); this._fadeStop=setTimeout(()=>{this._fadeStop=null;this.stop();},(t+1.0)*1000); }
     fadeIn()      { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.11,.9); }
-    stop()        { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} this._g(0,.5); }
+    stop()        { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} const _n=this.ctx.currentTime; this._srcs.forEach(n=>{try{n.stop(_n);}catch(e){}});this._srcs=[]; this._g(0,.5); }
     setVol(f)     { this._vf=f; this._g(this._lastV,0.2); }
     _g(v,tc)      { this._lastV=v; const g=this.master.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(v*this._vf,this.ctx.currentTime,tc); }
     _pad(f,t,d,v,w='sine'){
@@ -804,13 +804,13 @@ class VoidLeechMusic {
         const atk=Math.min(d*.38,1.1);
         g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(v,t+atk);
         g.gain.setValueAtTime(v,t+d*.68); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.05);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.05);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.15))*1000);
     }
     _n(f,t,d,v,w='sine'){
         const o=this.ctx.createOscillator(),g=this.ctx.createGain();
         o.type=w; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.01);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.01);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.1))*1000);
     }
     _noise(t,v,d,cut){
@@ -819,7 +819,7 @@ class VoidLeechMusic {
         const src=this.ctx.createBufferSource(); src.buffer=buf;
         const flt=this.ctx.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=cut;
         const g=this.ctx.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        src.connect(flt); flt.connect(g); g.connect(this.master); src.start(t);
+        src.connect(flt); flt.connect(g); g.connect(this.master); this._srcs.push(src); src.start(t);
         setTimeout(()=>{try{src.disconnect();flt.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.15))*1000);
     }
     _sched(s){
@@ -950,18 +950,18 @@ class MenuMusic {
 class GameMusic {
     constructor(ctx) {
         this.ctx=ctx; this.master=ctx.createGain(); this.master.gain.value=0; this.master.connect(ctx.destination);
-        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null;
+        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null; this._srcs=[];
     }
     start()      { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.10,.7); }
     fadeOut(t=1.5){ this._g(0,t/3.5); if(this._fadeStop)clearTimeout(this._fadeStop); this._fadeStop=setTimeout(()=>{this._fadeStop=null;this.stop();},(t+1.0)*1000); }
     fadeIn()     { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.10,.7); }
-    stop()       { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} this._g(0,.3); }
+    stop()       { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} const _n=this.ctx.currentTime; this._srcs.forEach(n=>{try{n.stop(_n);}catch(e){}});this._srcs=[]; this._g(0,.3); }
     setVol(f)    { this._vf=f; this._g(this._lastV,0.2); }
     _g(v,tc)     { this._lastV=v; const g=this.master.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(v*this._vf,this.ctx.currentTime,tc); }
     _n(f,t,d,v,w='square'){
         const o=this.ctx.createOscillator(),g=this.ctx.createGain();
         o.type=w; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.01);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.01);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.1))*1000);
     }
     _hat(t,v){
@@ -970,7 +970,7 @@ class GameMusic {
         const s=this.ctx.createBufferSource(); s.buffer=b;
         const f=this.ctx.createBiquadFilter(); f.type='highpass'; f.frequency.value=5500;
         const g=this.ctx.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+.04);
-        s.connect(f); f.connect(g); g.connect(this.master); s.start(t);
+        s.connect(f); f.connect(g); g.connect(this.master); this._srcs.push(s); s.start(t);
         setTimeout(()=>{try{s.disconnect();f.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+.09))*1000);
     }
     _sched(s){
@@ -1006,17 +1006,17 @@ class GameMusic {
 class BossMusic {
     constructor(ctx) {
         this.ctx=ctx; this.master=ctx.createGain(); this.master.gain.value=0; this.master.connect(ctx.destination);
-        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null;
+        this._on=false; this._loop=null; this._vf=1; this._lastV=0; this._fadeStop=null; this._srcs=[];
     }
     start()      { if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} if(!this._on){this._on=true;this._sched(this.ctx.currentTime+.05);} this._g(.14,.5); }
     fadeOut(t=1.5){ this._g(0,t/3.5); if(this._fadeStop)clearTimeout(this._fadeStop); this._fadeStop=setTimeout(()=>{this._fadeStop=null;this.stop();},(t+1.0)*1000); }
-    stop()       { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} this._g(0,.3); }
+    stop()       { this._on=false; if(this._loop){clearTimeout(this._loop);this._loop=null;} if(this._fadeStop){clearTimeout(this._fadeStop);this._fadeStop=null;} const _n=this.ctx.currentTime; this._srcs.forEach(n=>{try{n.stop(_n);}catch(e){}});this._srcs=[]; this._g(0,.3); }
     setVol(f)    { this._vf=f; this._g(this._lastV,0.2); }
     _g(v,tc)     { this._lastV=v; const g=this.master.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(v*this._vf,this.ctx.currentTime,tc); }
     _n(f,t,d,v,w='square'){
         const o=this.ctx.createOscillator(),g=this.ctx.createGain();
         o.type=w; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.01);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.01);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.1))*1000);
     }
     _kick(t,v){
@@ -1032,7 +1032,7 @@ class BossMusic {
         const s=this.ctx.createBufferSource(); s.buffer=b;
         const f=this.ctx.createBiquadFilter(); f.type='highpass'; f.frequency.value=7000;
         const g=this.ctx.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+.035);
-        s.connect(f); f.connect(g); g.connect(this.master); s.start(t);
+        s.connect(f); f.connect(g); g.connect(this.master); this._srcs.push(s); s.start(t);
         setTimeout(()=>{try{s.disconnect();f.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+.09))*1000);
     }
     _sched(s){
@@ -1077,7 +1077,7 @@ class VictoryMusic {
     _n(f,t,d,v,w='square'){
         const o=this.ctx.createOscillator(),g=this.ctx.createGain();
         o.type=w; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-        o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.01);
+        o.connect(g); g.connect(this.master); this._srcs.push(o); o.start(t); o.stop(t+d+.01);
         setTimeout(()=>{try{o.disconnect();g.disconnect();}catch(_){}},Math.max(0,(t-this.ctx.currentTime+d+.1))*1000);
     }
     _sched(s){
