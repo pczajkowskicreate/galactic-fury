@@ -449,6 +449,8 @@ class SoundFX {
     scarabBurst()    { const t = this._t(); this._noise(t, 0.55, 0.14, 2400); this._noise(t+0.03, 0.38, 0.24, 680); this._tone(t, 360, 75, 0.30, 'sawtooth', 0.18); this._tone(t+0.06, 210, 38, 0.22, 'square', 0.14); }
     hornetSting()    { const t = this._t(); this._tone(t, 1100, 400, 0.07, 'sawtooth', 0.10); this._tone(t+0.03, 700, 200, 0.06, 'square', 0.08); this._noise(t, 0.09, 0.06, 4800); }
     fishSqueak()     { const t = this._t(); this._tone(t, 1600, 400, 0.10, 'sine', 0.22); this._tone(t+0.04, 900, 200, 0.07, 'sine', 0.14); this._noise(t, 0.06, 0.05, 5000); }
+    predatorAttack() { const t = this._t(); this._tone(t, 55, 180, 0.32, 'sawtooth', 0.50); this._tone(t+0.06, 220, 480, 0.20, 'square', 0.30); this._noise(t+0.10, 0.22, 0.18, 900); this._tone(t+0.18, 380, 120, 0.12, 'sine', 0.18); }
+    predatorHit()    { const t = this._t(); this._tone(t, 280, 760, 0.07, 'sawtooth', 0.40); this._tone(t+0.03, 560, 240, 0.09, 'square', 0.30); this._noise(t, 0.12, 0.22, 3200); }
 
     meteorWarning() {
         const t = this._t();
@@ -1322,6 +1324,13 @@ class PreloadScene extends Phaser.Scene {
             for (let f = 0; f <= 6; f++) this.load.image(`fish-${id}-f${f}`, `assets/fish-${id}-f${f}.png`);
         });
 
+        // Gravity storm — void predators (PixelLab generated, 7 frames each)
+        ['a','b'].forEach(v => {
+            ['move','attack'].forEach(anim => {
+                for (let f = 0; f <= 6; f++) this.load.image(`void-predator-${v}-${anim}-f${f}`, `assets/void-predator-${v}-${anim}-f${f}.png`);
+            });
+        });
+
         // Black hole
         this.load.image('blackhole', 'assets/blackhole.png');
 
@@ -1412,6 +1421,10 @@ class PreloadScene extends Phaser.Scene {
         // Space fish swim animations (Void Leech dimension)
         ['004','010','014','039','046','051','053','059','060'].forEach(id => {
             A.create({ key: `fish-${id}-swim`, frames: Array.from({length:7},(_,i)=>({key:`fish-${id}-f${i}`})), frameRate: 9, repeat: -1 });
+        });
+        ['a','b'].forEach(v => {
+            A.create({ key: `void-predator-${v}-move`,   frames: Array.from({length:7},(_,i)=>({key:`void-predator-${v}-move-f${i}`})),   frameRate: 8,  repeat: -1 });
+            A.create({ key: `void-predator-${v}-attack`, frames: Array.from({length:7},(_,i)=>({key:`void-predator-${v}-attack-f${i}`})), frameRate: 10, repeat: 0  });
         });
         A.create({ key: 'hornet-sting', frames: Array.from({length:9}, (_,i)=>({key:`hornet-sting-${i}`})), frameRate: 14, repeat: -1 });
 
@@ -2522,6 +2535,9 @@ class GameScene extends Phaser.Scene {
         this.bonusLeeches    = this.add.group();
         this.leechTongues    = this.add.group();
         this.voidFish        = this.add.group();
+        this._fishTrailGfx   = this.add.graphics().setDepth(3.4).setBlendMode(Phaser.BlendModes.ADD);
+        this._fishTrailPuffs = [];
+        this.voidPredators   = this.add.group();
 
         // Mystery portal state
         this.voidPortalActive    = false;
@@ -2762,6 +2778,7 @@ class GameScene extends Phaser.Scene {
         this._updateVoidPortal(time, dt);
         this._updateVoidLeechBonus(time, dt);
         this._updateVoidFish(dt);
+        this._updateVoidPredators(time, dt);
         this._moveLeechTongues(dt);
         this._moveEnemyBolts(dt);
         this._moveAsteroids(dt);
@@ -3831,32 +3848,249 @@ class GameScene extends Phaser.Scene {
 
     _spawnVoidFishRain() {
         const FISH_IDS = ['004','010','014','039','046','051','053','059','060'];
+        const FISH_TRAIL_COLS = [0xff4466, 0xff8800, 0xffee00, 0x44ff88, 0x00ffee, 0x44aaff, 0xcc44ff, 0xff44cc];
         for (let i = 0; i < 14; i++) {
             const delay = i * Phaser.Math.Between(600, 1200);
             this.time.delayedCall(delay, () => {
                 if (!this.voidLeechBonusActive) return;
-                const id  = Phaser.Utils.Array.GetRandom(FISH_IDS);
-                const x   = Phaser.Math.Between(20, W - 20);
-                const spd = Phaser.Math.FloatBetween(130, 210);
-                const amp = Phaser.Math.FloatBetween(18, 42);
-                const frq = Phaser.Math.FloatBetween(1.8, 3.2);
-                const ph  = Phaser.Math.FloatBetween(0, Math.PI * 2);
-                const spr = this.add.sprite(x, -24, `fish-${id}-f0`)
+                const id   = Phaser.Utils.Array.GetRandom(FISH_IDS);
+                const x    = Phaser.Math.Between(20, W - 20);
+                const spd  = Phaser.Math.FloatBetween(130, 210);
+                const amp  = Phaser.Math.FloatBetween(18, 42);
+                const frq  = Phaser.Math.FloatBetween(1.8, 3.2);
+                const ph   = Phaser.Math.FloatBetween(0, Math.PI * 2);
+                const tCol = Phaser.Utils.Array.GetRandom(FISH_TRAIL_COLS);
+                const spr  = this.add.sprite(x, -24, `fish-${id}-f0`)
                     .setDepth(3.5).setScale(0.8).play(`fish-${id}-swim`);
-                spr.setData({ vy: spd, baseX: x, amp, frq, ph, elapsed: 0 });
+                spr.setData({ vy: spd, baseX: x, amp, frq, ph, elapsed: 0, trailColor: tCol, trailT: 0 });
                 this.voidFish.add(spr);
             });
         }
     }
 
     _updateVoidFish(dt) {
+        // Update + draw trail puffs
+        const g = this._fishTrailGfx;
+        g.clear();
+        this._fishTrailPuffs = this._fishTrailPuffs.filter(p => {
+            p.life -= dt;
+            if (p.life <= 0) return false;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            const a = (p.life / p.maxLife) * 0.55;
+            g.fillStyle(p.col, a);
+            g.fillEllipse(p.x, p.y, p.rx * 2, p.ry * 2);
+            return true;
+        });
+
         for (const f of [...this.voidFish.getChildren()]) {
             if (!f.active) continue;
             const el  = f.getData('elapsed') + dt;
             f.setData('elapsed', el);
             f.y += f.getData('vy') * dt;
             f.x  = f.getData('baseX') + Math.sin(el * f.getData('frq') + f.getData('ph')) * f.getData('amp');
-            if (f.y > H + 40) f.destroy();
+            if (f.y > H + 40) { f.destroy(); continue; }
+
+            // Emit trail puff every ~55ms
+            const tT = f.getData('trailT') + dt;
+            f.setData('trailT', tT);
+            if (tT >= 0.055) {
+                f.setData('trailT', 0);
+                const col     = f.getData('trailColor');
+                const maxLife = Phaser.Math.FloatBetween(0.28, 0.48);
+                this._fishTrailPuffs.push({
+                    x: f.x + Phaser.Math.FloatBetween(-5, 5),
+                    y: f.y - 10,
+                    vx: Phaser.Math.FloatBetween(-18, 18),
+                    vy: Phaser.Math.FloatBetween(-35, -12),
+                    rx: Phaser.Math.FloatBetween(3, 7),
+                    ry: Phaser.Math.FloatBetween(2, 5),
+                    col, life: maxLife, maxLife,
+                });
+            }
+        }
+    }
+
+    _spawnVoidPredators() {
+        [...this.voidPredators.getChildren()].forEach(p => p.destroy());
+        this._predatorSpawnCount = 0;
+        const F = Phaser.Math.FloatBetween;
+        const B = Phaser.Math.Between;
+        const now = this.time.now;
+
+        const mkPredator = (variant, cx, startAng, fireDelay, rushDelay) => {
+            const shieldGfx = this.add.graphics().setDepth(5.5);
+            const spr = this.add.sprite(cx, 90, `void-predator-${variant}-move-f0`)
+                .setDepth(5).setScale(1.1).play(`void-predator-${variant}-move`);
+            const hp0 = B(6, 8);
+            spr.setData({
+                variant, hp: hp0, maxHp: hp0,
+                orbitCx: cx, orbitCy: 95,
+                orbitR: 75, orbitAng: startAng,
+                orbitSpd: F(0.85, 1.15),
+                nextFire: now + fireDelay,
+                rushing: false, rushReturnPhase: false,
+                rushVx: 0, rushVy: 0,
+                rushOriginX: cx, rushOriginY: 95,
+                nextRush: now + rushDelay,
+                shieldActive: true, shieldExpires: now + 3000,
+                shieldGfx, shieldFlickering: false,
+            });
+            spr.on('destroy', () => { if (shieldGfx.active) shieldGfx.destroy(); });
+            this.voidPredators.add(spr);
+            this._predatorSpawnCount++;
+            return spr;
+        };
+
+        mkPredator('a', W * 0.28, 0,           B(2200, 3200), 0);
+        mkPredator('b', W * 0.72, Math.PI,     B(3000, 4200), B(4000, 6000));
+    }
+
+    _respawnVoidPredator() {
+        if (!this.bhShowerActive) return;
+        if (this._predatorSpawnCount >= 6) return;
+        const F   = Phaser.Math.FloatBetween;
+        const B   = Phaser.Math.Between;
+        const now = this.time.now;
+        const v   = Math.random() < 0.5 ? 'a' : 'b';
+        // Enter from left or right edge of upper zone
+        const fromLeft  = Math.random() < 0.5;
+        const cx        = fromLeft ? Phaser.Math.Between(60, W * 0.40) : Phaser.Math.Between(W * 0.60, W - 60);
+        const startAng  = fromLeft ? 0 : Math.PI;
+        const shieldGfx = this.add.graphics().setDepth(5.5);
+        const spr = this.add.sprite(cx, 80, `void-predator-${v}-move-f0`)
+            .setDepth(5).setScale(1.1).setAlpha(0).play(`void-predator-${v}-move`);
+        this.tweens.add({ targets: spr, alpha: 1, duration: 600 });
+        const hp0 = B(6, 8);
+        spr.setData({
+            variant: v, hp: hp0, maxHp: hp0,
+            orbitCx: cx, orbitCy: 95,
+            orbitR: 75, orbitAng: startAng,
+            orbitSpd: F(0.85, 1.15),
+            nextFire: now + B(2500, 4000),
+            rushing: false, rushReturnPhase: false,
+            rushVx: 0, rushVy: 0,
+            rushOriginX: cx, rushOriginY: 95,
+            nextRush: now + B(5000, 8000),
+            shieldActive: true, shieldExpires: now + 3000,
+            shieldGfx, shieldFlickering: false,
+        });
+        spr.on('destroy', () => { if (shieldGfx.active) shieldGfx.destroy(); });
+        this.voidPredators.add(spr);
+        this._predatorSpawnCount++;
+    }
+
+    _firePredatorBolt(x, y, tx, ty) {
+        const dx = tx - x, dy = ty - y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const spd  = 240;
+        const g = this.add.graphics().setDepth(4.5);
+        g.fillStyle(0x6600cc, 0.95); g.fillCircle(0, 0, 7);
+        g.fillStyle(0xbb44ff, 0.80); g.fillCircle(0, 0, 4);
+        g.fillStyle(0xffffff, 0.55); g.fillCircle(0, 0, 2);
+        g.x = x; g.y = y;
+        g.setData({ vx: (dx / dist) * spd, vy: (dy / dist) * spd });
+        this.enemyBolts.add(g);
+    }
+
+    _updateVoidPredators(time, dt) {
+        if (!this.bhShowerActive || !this.player) return;
+        for (const p of [...this.voidPredators.getChildren()]) {
+            if (!p.active) continue;
+            const v = p.getData('variant');
+            const rushing = p.getData('rushing');
+
+            // Shield: draw ring while active, drop after 3s
+            const sgfx = p.getData('shieldGfx');
+            if (sgfx && sgfx.active) {
+                sgfx.clear();
+                if (p.getData('shieldActive')) {
+                    const timeLeft = p.getData('shieldExpires') - time;
+                    if (timeLeft <= 0) {
+                        // Drop shield with flicker
+                        p.setData('shieldActive', false);
+                        let flicks = 0;
+                        const flicker = () => {
+                            if (!p.active) return;
+                            p.setAlpha(flicks % 2 === 0 ? 0.25 : 1.0);
+                            flicks++;
+                            if (flicks < 8) this.time.delayedCall(80, flicker);
+                            else if (p.active) p.setAlpha(1.0);
+                        };
+                        flicker();
+                    } else {
+                        // Pulsing purple shield ring
+                        const pulse = 0.45 + 0.45 * Math.sin(time * 0.006);
+                        // Outer glow ring
+                        sgfx.lineStyle(3.5, 0xaa44ff, 0.30 + pulse * 0.30);
+                        sgfx.strokeCircle(p.x, p.y, 36);
+                        // Inner solid ring
+                        sgfx.lineStyle(2, 0xdd88ff, 0.55 + pulse * 0.35);
+                        sgfx.strokeCircle(p.x, p.y, 29);
+                        // Sparkle dots at cardinal points
+                        const dotA = pulse * Math.PI * 2;
+                        for (let d = 0; d < 4; d++) {
+                            const da = dotA + d * Math.PI * 0.5;
+                            sgfx.fillStyle(0xffffff, 0.6 * pulse);
+                            sgfx.fillCircle(p.x + Math.cos(da) * 32, p.y + Math.sin(da) * 32, 2);
+                        }
+                    }
+                }
+            }
+
+            if (rushing) {
+                if (p.getData('rushReturnPhase')) {
+                    const ox = p.getData('rushOriginX'), oy = p.getData('rushOriginY');
+                    const dx = ox - p.x, dy = oy - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 10) {
+                        p.setData('rushing', false).setData('rushReturnPhase', false);
+                        p.setData('nextRush', time + Phaser.Math.Between(5000, 9000));
+                        p.play(`void-predator-${v}-move`);
+                    } else {
+                        const spd = 300;
+                        p.x += (dx / dist) * spd * dt;
+                        p.y += (dy / dist) * spd * dt;
+                    }
+                } else {
+                    p.x += p.getData('rushVx') * dt;
+                    p.y += p.getData('rushVy') * dt;
+                    const hitPlayer = Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y) < 28;
+                    if (p.y > H * 0.70 || hitPlayer) {
+                        if (hitPlayer && !this.invincible && !this.shieldActive) this._damagePlayer();
+                        p.setData('rushReturnPhase', true);
+                        const ang = p.getData('orbitAng');
+                        const cx = p.getData('orbitCx'), cy = p.getData('orbitCy'), r = p.getData('orbitR');
+                        p.setData('rushOriginX', cx + Math.cos(ang) * r);
+                        p.setData('rushOriginY', Phaser.Math.Clamp(cy + Math.sin(ang) * r * 0.35, 35, 195));
+                    }
+                }
+            } else {
+                const ang = p.getData('orbitAng') + p.getData('orbitSpd') * dt;
+                p.setData('orbitAng', ang);
+                const cx = p.getData('orbitCx'), cy = p.getData('orbitCy'), r = p.getData('orbitR');
+                p.x = cx + Math.cos(ang) * r;
+                p.y = Phaser.Math.Clamp(cy + Math.sin(ang) * r * 0.35, 35, 195);
+
+                if (time > p.getData('nextFire')) {
+                    this._firePredatorBolt(p.x, p.y, this.player.x, this.player.y);
+                    p.play(`void-predator-${v}-attack`);
+                    this.time.delayedCall(560, () => { if (p.active) p.play(`void-predator-${v}-move`); });
+                    p.setData('nextFire', time + Phaser.Math.Between(2200, 3800));
+                    if (this.sfx) this.sfx.predatorAttack();
+                }
+
+                if (v === 'b' && p.getData('hp') >= Math.ceil(p.getData('maxHp') / 2) && time > p.getData('nextRush')) {
+                    const dx = this.player.x - p.x, dy = this.player.y - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const spd  = 360;
+                    p.setData('rushing', true).setData('rushReturnPhase', false);
+                    p.setData('rushVx', (dx / dist) * spd).setData('rushVy', (dy / dist) * spd);
+                    p.setData('rushOriginX', p.x).setData('rushOriginY', p.y);
+                    p.play(`void-predator-${v}-attack`);
+                    if (this.sfx) this.sfx.predatorAttack();
+                }
+            }
         }
     }
 
@@ -4948,6 +5182,41 @@ class GameScene extends Phaser.Scene {
                 if (fhit) continue;
             }
 
+            // Void predators
+            if (this.bhShowerActive) {
+                let predHit = false;
+                for (const p of [...this.voidPredators.getChildren()]) {
+                    if (!p.active) continue;
+                    if (Phaser.Math.Distance.Between(b.x, b.y, p.x, p.y) < 36) {
+                        b.destroy(); predHit = true;
+                        if (p.getData('shieldActive')) {
+                            // Shield deflect — no damage
+                            this._spawnHitFX(b.x, b.y, false);
+                            if (this.sfx) this.sfx.shieldDeflect();
+                        } else {
+                            this._spawnHitFX(p.x, p.y, false);
+                            if (this.sfx) this.sfx.predatorHit();
+                            p.setTint(0xff4466);
+                            this.time.delayedCall(120, () => { if (p.active) p.clearTint(); });
+                            const hp = p.getData('hp') - 1;
+                            if (hp <= 0) {
+                                this.totalKills++;
+                                this._registerKill(400);
+                                this._spawnDeathFX(p.x, p.y, 'xA');
+                                p.destroy();
+                                if (this._predatorSpawnCount < 6) {
+                                    this.time.delayedCall(Phaser.Math.Between(1800, 3000), () => this._respawnVoidPredator());
+                                }
+                            } else {
+                                p.setData('hp', hp);
+                            }
+                        }
+                        break;
+                    }
+                }
+                if (predHit) continue;
+            }
+
             // Enemies
             let used = false;
             for (const e of [...this.enemies.getChildren()]) {
@@ -5349,12 +5618,15 @@ class GameScene extends Phaser.Scene {
             callback: () => { if (this.sfx && this.bhShowerActive) this.sfx.meteorRumble(); }
         });
 
+        this.time.delayedCall(1800, () => { if (this.bhShowerActive) this._spawnVoidPredators(); });
+
         let spawned = 0;
         const total = 14;
         const spawnNext = () => {
             if (spawned >= total) {
                 this.time.delayedCall(2800, () => {
                     this.bhShowerActive = false;
+                    [...this.voidPredators.getChildren()].forEach(p => { this._spawnDeathFX(p.x, p.y, 'xA'); p.destroy(); });
                     if (this._bhShowerRumble) { this._bhShowerRumble.remove(false); this._bhShowerRumble = null; }
                     // Fade out storm music, restore appropriate track
                     if (this.gravityStormMusic) this.gravityStormMusic.fadeOut(1.5);
