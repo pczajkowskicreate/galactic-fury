@@ -2,7 +2,7 @@
 
 const W = 480;
 const H = 720;
-const BASE = 'Legacy Collection/Legacy Collection/Assets/';
+const BASE = 'assets/warped/';
 
 const BOSS_WAVE = 5; // boss triggers when this wave clears
 
