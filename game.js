@@ -294,7 +294,15 @@ function updateGameBgPool(pool, dt) {
         const r = Math.random() * 100;
         let key, sc, ta, vy, rotSpd, depth, tint;
 
-        if (r < 30) {
+        // In prism mode, 40% chance to spawn a crystal geode or flower instead
+        if (scene.prismMode && Math.random() < 0.40) {
+            const PRISM_DEC = ['prism-geode-a','prism-geode-b','prism-geode-c','prism-geode-d','prism-flower-a','prism-flower-b'];
+            key = PRISM_DEC[B(0, PRISM_DEC.length - 1)];
+            sc = F(0.30, 0.70);  ta = F(0.10, 0.28);
+            vy = F(5, 14);
+            rotSpd = F(0.15, 0.80) * (Math.random() < 0.5 ? 1 : -1);
+            depth = 1;  tint = null;
+        } else if (r < 30) {
             key = GAME_BG_GALAXIES[B(0, GAME_BG_GALAXIES.length - 1)];
             sc = F(0.25, 0.62);  ta = F(0.18, 0.50);
             vy = F(14, 30);
@@ -430,6 +438,7 @@ class SoundFX {
     leechRush()      { const t = this._t(); this._tone(t, 190, 70, 2.72, 'sine', 0.08); this._tone(t+0.07, 230, 55, 2.88, 'sine', 0.08); this._tone(t+0.14, 160, 80, 3.04, 'sine', 0.08); this._tone(t+0.21, 140, 45, 3.20, 'sine', 0.10); this._tone(t+0.31, 200, 60, 2.88, 'sine', 0.08); this._tone(t+0.39, 110, 35, 2.56, 'sine', 0.14); this._noise(t, 2.56, 0.50, 280); this._noise(t+0.22, 2.08, 0.34, 220); }
     scarabBurst()    { const t = this._t(); this._noise(t, 0.55, 0.14, 2400); this._noise(t+0.03, 0.38, 0.24, 680); this._tone(t, 360, 75, 0.30, 'sawtooth', 0.18); this._tone(t+0.06, 210, 38, 0.22, 'square', 0.14); }
     hornetSting()    { const t = this._t(); this._tone(t, 1100, 400, 0.07, 'sawtooth', 0.10); this._tone(t+0.03, 700, 200, 0.06, 'square', 0.08); this._noise(t, 0.09, 0.06, 4800); }
+    fishSqueak()     { const t = this._t(); this._tone(t, 1600, 400, 0.10, 'sine', 0.22); this._tone(t+0.04, 900, 200, 0.07, 'sine', 0.14); this._noise(t, 0.06, 0.05, 5000); }
 
     meteorWarning() {
         const t = this._t();
@@ -1293,6 +1302,16 @@ class PreloadScene extends Phaser.Scene {
         [0,1,2,3,4,5,6,7,8].forEach(i => this.load.image(`prism-crystal-${i}`, `assets/prism-crystal-a${i}.png`));
         [0,1,2,3,4,5,6,7,8].forEach(i => this.load.image(`prism-enemy-${i}`,   `assets/prism-enemy-a${i}.png`));
 
+        // Stage 5 background decorations (PixelLab generated)
+        ['a','b','c','d'].forEach(v => this.load.image(`prism-geode-${v}`, `assets/prism-geode-${v}.png`));
+        ['a','b'].forEach(v => this.load.image(`prism-flower-${v}`, `assets/prism-flower-${v}.png`));
+
+        // Void Leech dimension — space fish (PixelLab generated, 7 frames each)
+        const FISH_IDS = ['004','010','014','039','046','051','053','059','060'];
+        FISH_IDS.forEach(id => {
+            for (let f = 0; f <= 6; f++) this.load.image(`fish-${id}-f${f}`, `assets/fish-${id}-f${f}.png`);
+        });
+
         // Black hole
         this.load.image('blackhole', 'assets/blackhole.png');
 
@@ -1380,6 +1399,10 @@ class PreloadScene extends Phaser.Scene {
         A.create({ key: 'worm-move',   frames: Array.from({length:9}, (_,i)=>({key:`worm-m${i}`})),   frameRate: 10, repeat: -1 });
         A.create({ key: 'worm-atk',    frames: Array.from({length:16},(_,i)=>({key:`worm-a${i}`})),   frameRate: 12, repeat: 0  });
         A.create({ key: 'hornet-move',  frames: Array.from({length:16},(_,i)=>({key:`hornet-m${i}`})),      frameRate: 12, repeat: -1 });
+        // Space fish swim animations (Void Leech dimension)
+        ['004','010','014','039','046','051','053','059','060'].forEach(id => {
+            A.create({ key: `fish-${id}-swim`, frames: Array.from({length:7},(_,i)=>({key:`fish-${id}-f${i}`})), frameRate: 9, repeat: -1 });
+        });
         A.create({ key: 'hornet-sting', frames: Array.from({length:9}, (_,i)=>({key:`hornet-sting-${i}`})), frameRate: 14, repeat: -1 });
 
         this.scene.start('MenuScene');
@@ -2488,6 +2511,7 @@ class GameScene extends Phaser.Scene {
         this.endlessDrops    = this.add.group();
         this.bonusLeeches    = this.add.group();
         this.leechTongues    = this.add.group();
+        this.voidFish        = this.add.group();
 
         // Mystery portal state
         this.voidPortalActive    = false;
@@ -2727,6 +2751,7 @@ class GameScene extends Phaser.Scene {
         this._moveEnemies(time, dt);
         this._updateVoidPortal(time, dt);
         this._updateVoidLeechBonus(time, dt);
+        this._updateVoidFish(dt);
         this._moveLeechTongues(dt);
         this._moveEnemyBolts(dt);
         this._moveAsteroids(dt);
@@ -3758,6 +3783,7 @@ class GameScene extends Phaser.Scene {
         this.voidLeechMiniWave = n;
         this.voidLeechAlive    = 0;
         this.voidLeechGroupCenters = [];
+        this._spawnVoidFishRain();
 
         // Green, yellow, blue, red — vivid creature palette
         const LEECH_COLORS = [0xff3333, 0xffdd00, 0x44ff88, 0x3399ff, 0xff8800, 0xee44ff, 0x00ffcc];
@@ -3790,6 +3816,37 @@ class GameScene extends Phaser.Scene {
                 this.bonusLeeches.add(lch);
                 this.voidLeechAlive++;
             }
+        }
+    }
+
+    _spawnVoidFishRain() {
+        const FISH_IDS = ['004','010','014','039','046','051','053','059','060'];
+        for (let i = 0; i < 14; i++) {
+            const delay = i * Phaser.Math.Between(600, 1200);
+            this.time.delayedCall(delay, () => {
+                if (!this.voidLeechBonusActive) return;
+                const id  = Phaser.Utils.Array.GetRandom(FISH_IDS);
+                const x   = Phaser.Math.Between(20, W - 20);
+                const spd = Phaser.Math.FloatBetween(130, 210);
+                const amp = Phaser.Math.FloatBetween(18, 42);
+                const frq = Phaser.Math.FloatBetween(1.8, 3.2);
+                const ph  = Phaser.Math.FloatBetween(0, Math.PI * 2);
+                const spr = this.add.sprite(x, -24, `fish-${id}-f0`)
+                    .setDepth(3.5).setScale(0.8).play(`fish-${id}-swim`);
+                spr.setData({ vy: spd, baseX: x, amp, frq, ph, elapsed: 0 });
+                this.voidFish.add(spr);
+            });
+        }
+    }
+
+    _updateVoidFish(dt) {
+        for (const f of [...this.voidFish.getChildren()]) {
+            if (!f.active) continue;
+            const el  = f.getData('elapsed') + dt;
+            f.setData('elapsed', el);
+            f.y += f.getData('vy') * dt;
+            f.x  = f.getData('baseX') + Math.sin(el * f.getData('frq') + f.getData('ph')) * f.getData('amp');
+            if (f.y > H + 40) f.destroy();
         }
     }
 
@@ -3895,6 +3952,7 @@ class GameScene extends Phaser.Scene {
         this.voidLeechTransitioning = false;
         [...this.bonusLeeches.getChildren()].forEach(l => l.destroy());
         [...this.leechTongues.getChildren()].forEach(t => t.destroy());
+        [...this.voidFish.getChildren()].forEach(f => f.destroy());
 
         // Remove gas clouds
         for (const c of this.voidLeechClouds) c.gfx.destroy();
@@ -4864,6 +4922,22 @@ class GameScene extends Phaser.Scene {
                 if (lhit) continue;
             }
 
+            // Void Fish
+            if (this.voidLeechBonusActive) {
+                let fhit = false;
+                for (const f of [...this.voidFish.getChildren()]) {
+                    if (!f.active) continue;
+                    if (Phaser.Math.Distance.Between(b.x, b.y, f.x, f.y) < 14) {
+                        this._spawnDeathFX(f.x, f.y, 'xA');
+                        this._registerKill(50);
+                        if (this.sfx) this.sfx.fishSqueak();
+                        b.destroy(); f.destroy(); fhit = true;
+                        break;
+                    }
+                }
+                if (fhit) continue;
+            }
+
             // Enemies
             let used = false;
             for (const e of [...this.enemies.getChildren()]) {
@@ -5106,6 +5180,17 @@ class GameScene extends Phaser.Scene {
                             this.time.delayedCall(900, () => this._endVoidLeechBonus());
                         }
                     }
+                    this._damagePlayer(); return;
+                }
+            }
+        }
+        if (this.voidLeechBonusActive) {
+            for (const f of [...this.voidFish.getChildren()]) {
+                if (!f.active) continue;
+                if (Phaser.Math.Distance.Between(f.x, f.y, this.player.x, this.player.y) < 18) {
+                    this._spawnDeathFX(f.x, f.y, 'xA');
+                    if (this.sfx) this.sfx.fishSqueak();
+                    f.destroy();
                     this._damagePlayer(); return;
                 }
             }
